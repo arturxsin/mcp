@@ -611,11 +611,13 @@ function Row({
           style={{ width: AVATAR_W, minWidth: AVATAR_W, padding: 0, position: 'relative' }}
           className={`border-b border-ink-200 transition-colors overflow-hidden ${bg}`}
         >
-          <img
-            src={contact.photo || DEFAULT_AVATAR}
-            alt=""
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img
+              src={contact.photo || DEFAULT_AVATAR}
+              alt=""
+              style={{ width: AVATAR_W, height: AVATAR_W, objectFit: 'cover', display: 'block', flexShrink: 0 }}
+            />
+          </div>
         </td>
       )}
       <td

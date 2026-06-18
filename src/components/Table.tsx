@@ -608,13 +608,13 @@ function Row({
       {/* Avatar — after Status, before Name */}
       {avatarEnabled && (
         <td
-          style={{ width: AVATAR_W, minWidth: AVATAR_W, padding: 0, height: '1px' }}
+          style={{ width: AVATAR_W, minWidth: AVATAR_W, padding: 0, position: 'relative' }}
           className={`border-b border-ink-200 transition-colors overflow-hidden ${bg}`}
         >
           <img
             src={contact.photo || DEFAULT_AVATAR}
             alt=""
-            style={{ width: AVATAR_W, height: '100%', minHeight: 40, display: 'block', objectFit: 'cover' }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         </td>
       )}

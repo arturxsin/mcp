@@ -23,6 +23,8 @@ import { bulkDeleteContacts, createContact, reorderFields, setColumnWidth, updat
 import type { Board, Contact, FieldDef, Status } from '../types';
 
 const CHECKBOX_W = 36;
+const AVATAR_W = 52;
+const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 type SortDir = 'asc' | 'desc';
 type SortKey = { type: 'name' } | { type: 'status' } | { type: 'field'; fieldId: string };
@@ -45,6 +47,7 @@ interface Props {
   search: string;
   statusFilter: Set<string>;
   sidebarTab: string | null;
+  avatarEnabled: boolean;
 }
 
 export function Table({
@@ -59,6 +62,7 @@ export function Table({
   search,
   statusFilter,
   sidebarTab,
+  avatarEnabled,
 }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [tempWidths, setTempWidths] = useState<Record<string, number>>({});
@@ -220,9 +224,11 @@ export function Table({
   }
 
   const cols = fields.map((f) => f.id);
+  const avatarColW = avatarEnabled ? AVATAR_W : 0;
+
   // Total table width for layout
   const totalWidth =
-    CHECKBOX_W + widths.status + widths.name + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
+    CHECKBOX_W + avatarColW + widths.status + widths.name + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
 
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -236,6 +242,7 @@ export function Table({
         >
           <colgroup>
             <col style={{ width: CHECKBOX_W }} />
+            {avatarEnabled && <col style={{ width: AVATAR_W }} />}
             <col style={{ width: widths.status }} />
             <col style={{ width: widths.name }} />
             {fields.map((f) => (
@@ -258,9 +265,15 @@ export function Table({
                   className="cursor-pointer accent-ink-700"
                 />
               </th>
+              {avatarEnabled && (
+                <th
+                  style={{ width: AVATAR_W, minWidth: AVATAR_W }}
+                  className="bg-ink-50 border-b border-ink-200"
+                />
+              )}
               <StatusHeader
                 width={widths.status}
-                left={CHECKBOX_W}
+                left={CHECKBOX_W + avatarColW}
                 onSort={() => toggleSort({ type: 'status' })}
                 sortDir={isSorted({ type: 'status' })}
                 onOpenStatusManager={onOpenStatusManager}
@@ -270,7 +283,7 @@ export function Table({
               />
               <NameHeader
                 width={widths.name}
-                left={CHECKBOX_W + widths.status}
+                left={CHECKBOX_W + avatarColW + widths.status}
                 onSort={() => toggleSort({ type: 'name' })}
                 sortDir={isSorted({ type: 'name' })}
                 onDrag={(w) => handleDrag('name', w)}
@@ -321,6 +334,8 @@ export function Table({
                   selected={selectedIds.has(c.id)}
                   onToggleSelect={() => toggleSelect(c.id)}
                   anySelected={selectedIds.size > 0}
+                  avatarEnabled={avatarEnabled}
+                  avatarColW={avatarColW}
                 />
               ))
             )}
@@ -527,6 +542,8 @@ function Row({
   selected,
   onToggleSelect,
   anySelected,
+  avatarEnabled,
+  avatarColW,
 }: {
   contact: Contact;
   fields: FieldDef[];
@@ -540,17 +557,20 @@ function Row({
   selected: boolean;
   onToggleSelect: () => void;
   anySelected: boolean;
+  avatarEnabled: boolean;
+  avatarColW: number;
 }) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const subItems = contact.nameSubItems ?? [];
+  const bg = selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50';
 
   return (
     <tr className={`group hover:bg-ink-50 transition-colors ${selected ? 'bg-indigo-50' : ''}`}>
       {/* Checkbox */}
       <td
         style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 ${selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50'}`}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 ${bg}`}
       >
         <input
           type="checkbox"
@@ -559,9 +579,22 @@ function Row({
           className={`cursor-pointer accent-ink-700 transition-opacity ${anySelected || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         />
       </td>
+      {/* Avatar */}
+      {avatarEnabled && (
+        <td
+          style={{ width: AVATAR_W, minWidth: AVATAR_W, padding: 0 }}
+          className={`border-b border-ink-200 transition-colors ${bg}`}
+        >
+          <img
+            src={contact.photo || DEFAULT_AVATAR}
+            alt=""
+            style={{ width: AVATAR_W, height: AVATAR_W, display: 'block', objectFit: 'cover' }}
+          />
+        </td>
+      )}
       <td
-        style={{ width: widthStatus, maxWidth: widthStatus, left: CHECKBOX_W }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 px-3 py-1.5 ${selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50'}`}
+        style={{ width: widthStatus, maxWidth: widthStatus, left: CHECKBOX_W + avatarColW }}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 px-3 py-1.5 ${bg}`}
       >
         <button
           ref={setStatusAnchor}
@@ -585,8 +618,8 @@ function Row({
         />
       </td>
       <td
-        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 py-1 ${selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50'}`}
+        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + avatarColW + widthStatus }}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 py-1 ${bg}`}
       >
         <div className="flex items-start gap-1">
           <button

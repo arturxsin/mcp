@@ -29,6 +29,7 @@ export interface Contact {
   statusId: string | null;
   values: Record<string, string>; // fieldId -> value
   nameSubItems?: NameSubItem[];
+  photo?: string; // data URL or external URL
   createdAt: number;
   updatedAt: number;
 }

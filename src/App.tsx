@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { db, ensureSeed, createContact, createSoldEntry, ensureSoldDefaults } from './db';
 import { Table } from './components/Table';
 import { Toolbar } from './components/Toolbar';
@@ -11,6 +11,8 @@ import { ColumnPicker } from './components/ColumnPicker';
 import { TabsNav, type ViewKey } from './components/TabsNav';
 import { SoldTable } from './components/sold/SoldTable';
 import { StatusSidebar } from './components/StatusSidebar';
+import { SettingsModal } from './components/SettingsModal';
+import { loadSettings, saveSettings, type AppSettings } from './settings';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -23,6 +25,13 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [sidebarTab, setSidebarTab] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(loadSettings);
+
+  function handleSettingsChange(s: AppSettings) {
+    setSettings(s);
+    saveSettings(s);
+  }
 
   useEffect(() => {
     ensureSeed().then((id) => {
@@ -133,6 +142,14 @@ export default function App() {
             `${soldEntries.length} ${plural(soldEntries.length, ['сделка', 'сделки', 'сделок'])}`}
         </div>
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          title="Настройки"
+          className="p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-md transition-colors"
+        >
+          <Settings size={16} />
+        </button>
         {view === 'kanban' ? (
           <div className="flex items-center gap-2">
             <button
@@ -199,6 +216,7 @@ export default function App() {
               search={search}
               statusFilter={statusFilter}
               sidebarTab={sidebarTab}
+              avatarEnabled={settings.avatarEnabled}
             />
 
             <ColumnPicker
@@ -229,6 +247,14 @@ export default function App() {
         statuses={statuses}
         boardId={currentBoardId}
         onOpenStatusManager={() => setStatusMgrOpen(true)}
+        avatarEnabled={settings.avatarEnabled}
+      />
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        onChange={handleSettingsChange}
       />
 
       <StatusManager

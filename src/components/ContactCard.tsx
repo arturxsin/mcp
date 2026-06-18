@@ -38,7 +38,10 @@ interface Props {
   statuses: Status[];
   boardId: string;
   onOpenStatusManager: () => void;
+  avatarEnabled?: boolean;
 }
+
+const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 export function ContactCard({
   open,
@@ -48,6 +51,7 @@ export function ContactCard({
   statuses,
   boardId,
   onOpenStatusManager,
+  avatarEnabled = false,
 }: Props) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -118,6 +122,17 @@ export function ContactCard({
     await reorderFields(boardId, ordered);
   }
 
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !contact) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      await updateContact(contact.id, { photo: ev.target?.result as string });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
   if (!contact) return null;
   const currentStatus = statuses.find((s) => s.id === contact.statusId) ?? null;
   const subItems = contact.nameSubItems ?? [];
@@ -125,6 +140,53 @@ export function ContactCard({
   return (
     <Modal open={open} onClose={handleClose} width={620}>
       <div className="p-5 space-y-4">
+        {/* Avatar section */}
+        {avatarEnabled && (
+          <div className="flex items-start gap-4">
+            <div className="relative shrink-0">
+              <img
+                src={contact.photo || DEFAULT_AVATAR}
+                alt="Фото клиента"
+                className="w-20 h-20 rounded-xl object-cover border border-ink-200"
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById(`photo-upload-${contact.id}`)?.click()}
+                className="absolute -bottom-1.5 -right-1.5 bg-ink-900 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-ink-700 transition-colors"
+                title="Загрузить фото"
+              >
+                <Plus size={12} />
+              </button>
+              <input
+                id={`photo-upload-${contact.id}`}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoFile}
+              />
+            </div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="text-xs text-ink-400 uppercase tracking-wider font-medium">Фото</div>
+              <input
+                type="url"
+                value={contact.photo?.startsWith('data:') ? '' : (contact.photo ?? '')}
+                onChange={(e) => updateContact(contact.id, { photo: e.target.value })}
+                placeholder="https://... (ссылка на фото)"
+                className="w-full px-3 py-1.5 text-sm border border-ink-200 rounded-md focus:outline-none focus:border-ink-400 placeholder:text-ink-300"
+              />
+              {contact.photo && (
+                <button
+                  type="button"
+                  onClick={() => updateContact(contact.id, { photo: '' })}
+                  className="text-xs text-ink-400 hover:text-red-500 transition-colors"
+                >
+                  Удалить фото
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Name + Status row */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">

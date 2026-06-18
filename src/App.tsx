@@ -134,16 +134,25 @@ export default function App() {
         </div>
         <div className="flex-1" />
         {view === 'kanban' ? (
-          <button
-            type="button"
-            onClick={async () => {
-              const id = await createContact(currentBoardId);
-              setOpenContactId(id);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-ink-900 text-white rounded-md hover:bg-ink-700 transition-colors"
-          >
-            <Plus size={14} /> Новый клиент
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStatusMgrOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white border border-ink-200 text-ink-700 rounded-md hover:bg-ink-50 transition-colors"
+            >
+              <Plus size={14} /> Статус
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const id = await createContact(currentBoardId);
+                setOpenContactId(id);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-ink-900 text-white rounded-md hover:bg-ink-700 transition-colors"
+            >
+              <Plus size={14} /> Клиент
+            </button>
+          </div>
         ) : (
           <button
             type="button"

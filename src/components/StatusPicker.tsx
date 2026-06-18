@@ -1,0 +1,71 @@
+import { Popover } from './Popover';
+import { Check, Settings2, X } from 'lucide-react';
+import type { Status } from '../types';
+import { contrastText } from '../utils';
+
+interface Props {
+  anchor: HTMLElement | null;
+  open: boolean;
+  onClose: () => void;
+  statuses: Status[];
+  current: string | null;
+  onPick: (statusId: string | null) => void;
+  onManage?: () => void;
+}
+
+export function StatusPicker({ anchor, open, onClose, statuses, current, onPick, onManage }: Props) {
+  return (
+    <Popover anchor={anchor} open={open} onClose={onClose} width={220}>
+      <div className="px-2 py-1.5 text-[11px] uppercase tracking-wider text-ink-400 font-medium">
+        Статус
+      </div>
+      {statuses.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          onClick={() => {
+            onPick(s.id);
+            onClose();
+          }}
+          className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-ink-100 rounded-md text-left transition-colors"
+        >
+          <span
+            style={{ backgroundColor: s.color, color: contrastText(s.color) }}
+            className="px-2 py-0.5 rounded text-[11px] font-medium"
+          >
+            {s.name}
+          </span>
+          {current === s.id && <Check size={14} className="text-ink-700" />}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => {
+          onPick(null);
+          onClose();
+        }}
+        className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-ink-100 rounded-md text-left text-ink-500 text-xs transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <X size={12} /> Снять статус
+        </span>
+        {current === null && <Check size={14} className="text-ink-700" />}
+      </button>
+      {onManage && (
+        <>
+          <div className="border-t border-ink-200 my-1" />
+          <button
+            type="button"
+            onClick={() => {
+              onManage();
+              onClose();
+            }}
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 hover:bg-ink-100 rounded-md text-left text-xs text-ink-600 transition-colors"
+          >
+            <Settings2 size={12} /> Настроить статусы
+          </button>
+        </>
+      )}
+    </Popover>
+  );
+}

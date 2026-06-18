@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FieldType } from '../types';
-import { inputTypeFor, parseLinkValue, placeholderFor } from '../utils';
+import { inputTypeFor, looksLikeUrl, parseLinkValue, placeholderFor } from '../utils';
 
 interface Props {
   value: string;
@@ -62,15 +62,33 @@ export function InlineCell({ value, type, onCommit, placeholder, className }: Pr
     const display = value || '';
     const isEmail = type === 'email' && value;
     const isPhone = type === 'phone' && value;
+    const isAutoUrl = type === 'text' && looksLikeUrl(value);
     return (
       <div
-        onClick={() => setEditing(true)}
-        className={`min-h-[28px] px-2 py-1 rounded cursor-text text-sm truncate hover:bg-ink-100 transition-colors ${className ?? ''}`}
+        onClick={() => !isAutoUrl && setEditing(true)}
+        className={`min-h-[28px] px-2 py-1 rounded text-sm truncate transition-colors ${isAutoUrl ? '' : 'cursor-text hover:bg-ink-100'} ${className ?? ''}`}
       >
         {display ? (
-          <span className={isEmail || isPhone ? 'text-ink-700' : 'text-ink-900'}>{display}</span>
+          isAutoUrl ? (
+            <a
+              href={value.trim()}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-indigo-600 hover:text-indigo-800 hover:underline"
+            >
+              {value}
+            </a>
+          ) : (
+            <span className={isEmail || isPhone ? 'text-ink-700' : 'text-ink-900'}>{display}</span>
+          )
         ) : (
-          <span className="text-ink-300">{placeholder ?? placeholderFor(type) ?? '—'}</span>
+          <span
+            className="text-ink-300 cursor-text"
+            onClick={() => setEditing(true)}
+          >
+            {placeholder ?? placeholderFor(type) ?? '—'}
+          </span>
         )}
       </div>
     );

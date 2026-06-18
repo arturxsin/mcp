@@ -91,3 +91,7 @@ export const STATUS_PALETTE = [
 export function cn(...args: Array<string | false | null | undefined>): string {
   return args.filter(Boolean).join(' ');
 }
+
+export function looksLikeUrl(s: string): boolean {
+  return /^https?:\/\/\S+/.test(s.trim());
+}

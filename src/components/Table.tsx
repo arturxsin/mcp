@@ -21,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { bulkDeleteContacts, createContact, reorderFields, setColumnWidth, updateContact } from '../db';
 import type { Board, Contact, FieldDef, Status } from '../types';
+import { looksLikeUrl } from '../utils';
 
 const CHECKBOX_W = 36;
 const AVATAR_W = 52;
@@ -242,8 +243,8 @@ export function Table({
         >
           <colgroup>
             <col style={{ width: CHECKBOX_W }} />
-            {avatarEnabled && <col style={{ width: AVATAR_W }} />}
             <col style={{ width: widths.status }} />
+            {avatarEnabled && <col style={{ width: AVATAR_W }} />}
             <col style={{ width: widths.name }} />
             {fields.map((f) => (
               <col key={f.id} style={{ width: widths.forField(f.id) }} />
@@ -265,15 +266,9 @@ export function Table({
                   className="cursor-pointer accent-ink-700"
                 />
               </th>
-              {avatarEnabled && (
-                <th
-                  style={{ width: AVATAR_W, minWidth: AVATAR_W }}
-                  className="bg-ink-50 border-b border-ink-200"
-                />
-              )}
               <StatusHeader
                 width={widths.status}
-                left={CHECKBOX_W + avatarColW}
+                left={CHECKBOX_W}
                 onSort={() => toggleSort({ type: 'status' })}
                 sortDir={isSorted({ type: 'status' })}
                 onOpenStatusManager={onOpenStatusManager}
@@ -281,9 +276,15 @@ export function Table({
                 onCommit={(w) => handleCommit('status', w)}
                 onAutoFit={() => autoFit('status')}
               />
+              {avatarEnabled && (
+                <th
+                  style={{ width: AVATAR_W, minWidth: AVATAR_W }}
+                  className="bg-ink-50 border-b border-ink-200"
+                />
+              )}
               <NameHeader
                 width={widths.name}
-                left={CHECKBOX_W + avatarColW + widths.status}
+                left={CHECKBOX_W + widths.status + avatarColW}
                 onSort={() => toggleSort({ type: 'name' })}
                 sortDir={isSorted({ type: 'name' })}
                 onDrag={(w) => handleDrag('name', w)}
@@ -579,21 +580,8 @@ function Row({
           className={`cursor-pointer accent-ink-700 transition-opacity ${anySelected || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         />
       </td>
-      {/* Avatar */}
-      {avatarEnabled && (
-        <td
-          style={{ width: AVATAR_W, minWidth: AVATAR_W, padding: 0 }}
-          className={`border-b border-ink-200 transition-colors ${bg}`}
-        >
-          <img
-            src={contact.photo || DEFAULT_AVATAR}
-            alt=""
-            style={{ width: AVATAR_W, height: AVATAR_W, display: 'block', objectFit: 'cover' }}
-          />
-        </td>
-      )}
       <td
-        style={{ width: widthStatus, maxWidth: widthStatus, left: CHECKBOX_W + avatarColW }}
+        style={{ width: widthStatus, maxWidth: widthStatus, left: CHECKBOX_W }}
         className={`sticky z-[4] transition-colors border-b border-ink-200 px-3 py-1.5 ${bg}`}
       >
         <button
@@ -617,8 +605,21 @@ function Row({
           onManage={onOpenStatusManager}
         />
       </td>
+      {/* Avatar — after Status, before Name */}
+      {avatarEnabled && (
+        <td
+          style={{ width: AVATAR_W, minWidth: AVATAR_W, padding: 0, height: '1px' }}
+          className={`border-b border-ink-200 transition-colors overflow-hidden ${bg}`}
+        >
+          <img
+            src={contact.photo || DEFAULT_AVATAR}
+            alt=""
+            style={{ width: AVATAR_W, height: '100%', minHeight: 40, display: 'block', objectFit: 'cover' }}
+          />
+        </td>
+      )}
       <td
-        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + avatarColW + widthStatus }}
+        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus + avatarColW }}
         className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 py-1 ${bg}`}
       >
         <div className="flex items-start gap-1">
@@ -640,7 +641,17 @@ function Row({
             />
             {subItems.map((item) => item.value.trim() ? (
               <div key={item.id} className="text-xs text-ink-400 truncate px-2 mt-0.5">
-                {item.value}
+                {looksLikeUrl(item.value) ? (
+                  <a
+                    href={item.value.trim()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-indigo-500 hover:text-indigo-700 hover:underline"
+                  >
+                    {item.value}
+                  </a>
+                ) : item.value}
               </div>
             ) : null)}
           </div>

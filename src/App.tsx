@@ -10,6 +10,7 @@ import { BoardSwitcher } from './components/BoardSwitcher';
 import { ColumnPicker } from './components/ColumnPicker';
 import { TabsNav, type ViewKey } from './components/TabsNav';
 import { SoldTable } from './components/sold/SoldTable';
+import { StatusSidebar } from './components/StatusSidebar';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -21,6 +22,7 @@ export default function App() {
   const columnsBtnRef = useRef<HTMLButtonElement>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
+  const [sidebarTab, setSidebarTab] = useState<string | null>(null);
 
   useEffect(() => {
     ensureSeed().then((id) => {
@@ -90,6 +92,7 @@ export default function App() {
   useEffect(() => {
     setStatusFilter(new Set());
     setSearch('');
+    setSidebarTab(null);
   }, [currentBoardId, view]);
 
   // Hotkey: Cmd/Ctrl + N → new contact / new sold entry (depending on view)
@@ -155,39 +158,48 @@ export default function App() {
       </header>
 
       {view === 'kanban' && (
-        <>
-          <div className="px-4 py-2.5 border-b border-ink-200 bg-white">
-            <Toolbar
-              search={search}
-              onSearch={setSearch}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
+        <div className="flex flex-1 overflow-hidden">
+          <StatusSidebar
+            statuses={statuses}
+            contacts={contacts}
+            active={sidebarTab}
+            onChange={setSidebarTab}
+          />
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-ink-200 bg-white">
+              <Toolbar
+                search={search}
+                onSearch={setSearch}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                statuses={statuses}
+                onColumnsClick={() => setColumnsOpen((v) => !v)}
+                columnsBtnRef={columnsBtnRef}
+              />
+            </div>
+
+            <Table
+              contacts={contacts}
+              fields={visibleFields}
+              allFields={allFields}
               statuses={statuses}
-              onColumnsClick={() => setColumnsOpen((v) => !v)}
-              columnsBtnRef={columnsBtnRef}
+              board={currentBoard ?? null}
+              boardId={currentBoardId}
+              onOpenContact={setOpenContactId}
+              onOpenStatusManager={() => setStatusMgrOpen(true)}
+              search={search}
+              statusFilter={statusFilter}
+              sidebarTab={sidebarTab}
+            />
+
+            <ColumnPicker
+              anchor={columnsBtnRef.current}
+              open={columnsOpen}
+              onClose={() => setColumnsOpen(false)}
+              fields={allFields}
             />
           </div>
-
-          <Table
-            contacts={contacts}
-            fields={visibleFields}
-            allFields={allFields}
-            statuses={statuses}
-            board={currentBoard ?? null}
-            boardId={currentBoardId}
-            onOpenContact={setOpenContactId}
-            onOpenStatusManager={() => setStatusMgrOpen(true)}
-            search={search}
-            statusFilter={statusFilter}
-          />
-
-          <ColumnPicker
-            anchor={columnsBtnRef.current}
-            open={columnsOpen}
-            onClose={() => setColumnsOpen(false)}
-            fields={allFields}
-          />
-        </>
+        </div>
       )}
 
       {view === 'sold' && (

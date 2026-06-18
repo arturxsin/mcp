@@ -5,6 +5,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   phone: 'Телефон',
   email: 'Email',
   note: 'Заметка',
+  link: 'Ссылка',
 };
 
 export const FIELD_TYPE_OPTIONS: Array<{ value: FieldType; label: string }> = [
@@ -12,7 +13,25 @@ export const FIELD_TYPE_OPTIONS: Array<{ value: FieldType; label: string }> = [
   { value: 'phone', label: 'Телефон' },
   { value: 'email', label: 'Email' },
   { value: 'note', label: 'Заметка' },
+  { value: 'link', label: 'Ссылка' },
 ];
+
+export interface LinkValue {
+  url: string;
+  label: string;
+}
+
+export function parseLinkValue(v: string): LinkValue {
+  try {
+    const p = JSON.parse(v);
+    if (p && typeof p === 'object') return { url: p.url ?? '', label: p.label ?? '' };
+  } catch {}
+  return { url: v, label: '' };
+}
+
+export function encodeLinkValue(url: string, label: string): string {
+  return JSON.stringify({ url, label });
+}
 
 export function inputTypeFor(t: FieldType): string {
   switch (t) {

@@ -13,7 +13,7 @@ import {
   updateField,
 } from '../db';
 import type { Contact, FieldDef, NameSubItem, Status } from '../types';
-import { FIELD_TYPE_OPTIONS, inputTypeFor, placeholderFor } from '../utils';
+import { FIELD_TYPE_OPTIONS, encodeLinkValue, inputTypeFor, parseLinkValue, placeholderFor } from '../utils';
 import {
   DndContext,
   closestCenter,
@@ -316,6 +316,28 @@ interface RowProps {
   onDelete: () => void;
 }
 
+function LinkFieldInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { url, label } = parseLinkValue(value);
+  return (
+    <div className="space-y-1">
+      <input
+        type="url"
+        value={url}
+        onChange={(e) => onChange(encodeLinkValue(e.target.value, label))}
+        placeholder="https://example.com"
+        className="w-full px-2 py-1.5 text-sm bg-transparent border border-transparent hover:border-ink-200 focus:border-ink-300 focus:bg-white rounded-md transition-colors placeholder:text-ink-300"
+      />
+      <input
+        type="text"
+        value={label}
+        onChange={(e) => onChange(encodeLinkValue(url, e.target.value))}
+        placeholder="Текст ссылки (необязательно)"
+        className="w-full px-2 py-1.5 text-sm bg-transparent border border-transparent hover:border-ink-200 focus:border-ink-300 focus:bg-white rounded-md transition-colors placeholder:text-ink-300 text-ink-500"
+      />
+    </div>
+  );
+}
+
 function FieldRow({ field, value, onChange, onToggleVisible, onRename, onDelete }: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: field.id,
@@ -386,6 +408,8 @@ function FieldRow({ field, value, onChange, onToggleVisible, onRename, onDelete 
             rows={2}
             className="w-full px-2 py-1.5 text-sm bg-transparent border border-transparent hover:border-ink-200 focus:border-ink-300 focus:bg-white rounded-md resize-none transition-colors placeholder:text-ink-300"
           />
+        ) : field.type === 'link' ? (
+          <LinkFieldInput value={value} onChange={onChange} />
         ) : (
           <input
             type={inputTypeFor(field.type)}

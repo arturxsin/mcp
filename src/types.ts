@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'phone' | 'email' | 'note';
+export type FieldType = 'text' | 'phone' | 'email' | 'note' | 'link';
 
 export interface FieldDef {
   id: string;

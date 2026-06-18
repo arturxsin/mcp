@@ -44,6 +44,7 @@ interface Props {
   onOpenStatusManager: () => void;
   search: string;
   statusFilter: Set<string>;
+  sidebarTab: string | null;
 }
 
 export function Table({
@@ -57,6 +58,7 @@ export function Table({
   onOpenStatusManager,
   search,
   statusFilter,
+  sidebarTab,
 }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [tempWidths, setTempWidths] = useState<Record<string, number>>({});
@@ -77,7 +79,10 @@ export function Table({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return contacts.filter((c) => {
-      if (statusFilter.size > 0) {
+      // Sidebar tab filter (single status)
+      if (sidebarTab !== null) {
+        if (c.statusId !== sidebarTab) return false;
+      } else if (statusFilter.size > 0) {
         if (!c.statusId || !statusFilter.has(c.statusId)) return false;
       }
       if (!q) return true;
@@ -87,7 +92,7 @@ export function Table({
       }
       return false;
     });
-  }, [contacts, search, statusFilter]);
+  }, [contacts, search, statusFilter, sidebarTab]);
 
   const sorted = useMemo(() => {
     if (!sort) return filtered;

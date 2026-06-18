@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FieldType } from '../types';
-import { inputTypeFor, placeholderFor } from '../utils';
+import { inputTypeFor, parseLinkValue, placeholderFor } from '../utils';
 
 interface Props {
   value: string;
@@ -31,6 +31,31 @@ export function InlineCell({ value, type, onCommit, placeholder, className }: Pr
   function commit() {
     if (draft !== value) onCommit(draft);
     setEditing(false);
+  }
+
+  // Link type: display as clickable anchor, editing done in ContactCard
+  if (type === 'link') {
+    const { url, label } = parseLinkValue(value);
+    if (!url) {
+      return (
+        <div className={`min-h-[28px] px-2 py-1 text-sm text-ink-300 ${className ?? ''}`}>
+          —
+        </div>
+      );
+    }
+    return (
+      <div className={`min-h-[28px] px-2 py-1 text-sm ${className ?? ''}`}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-indigo-600 hover:text-indigo-800 hover:underline truncate block"
+        >
+          {label || url}
+        </a>
+      </div>
+    );
   }
 
   if (!editing) {

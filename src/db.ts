@@ -12,6 +12,7 @@ import type {
   SoldFieldKey,
   SoldTemplate,
   SoldFieldType,
+  NameSubItem,
 } from './types';
 
 class CrmDB extends Dexie {
@@ -168,6 +169,7 @@ export async function createContact(boardId: string, name = ''): Promise<string>
     name,
     statusId: firstStatus?.id ?? null,
     values: {},
+    nameSubItems: [],
     createdAt: now,
     updatedAt: now,
   });
@@ -181,6 +183,13 @@ export async function updateContact(id: string, patch: Partial<Contact>) {
 export async function deleteContact(id: string) {
   await db.contacts.delete(id);
 }
+
+export async function bulkDeleteContacts(ids: string[]) {
+  await db.contacts.bulkDelete(ids);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type { NameSubItem };
 
 export async function createField(
   boardId: string,

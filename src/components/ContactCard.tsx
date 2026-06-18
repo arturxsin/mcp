@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { nanoid } from 'nanoid';
 import { Modal } from './Modal';
 import { StatusBadge } from './StatusBadge';
 import { StatusPicker } from './StatusPicker';
-import { Plus, Trash2, GripVertical, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Eye, EyeOff, X } from 'lucide-react';
 import {
   createField,
   deleteContact,
@@ -11,7 +12,7 @@ import {
   updateContact,
   updateField,
 } from '../db';
-import type { Contact, FieldDef, Status } from '../types';
+import type { Contact, FieldDef, NameSubItem, Status } from '../types';
 import { FIELD_TYPE_OPTIONS, inputTypeFor, placeholderFor } from '../utils';
 import {
   DndContext,
@@ -63,6 +64,19 @@ export function ContactCard({
     }
   }, [open]);
 
+  async function handleClose() {
+    if (contact) {
+      const isEmpty =
+        !contact.name.trim() &&
+        Object.values(contact.values).every((v) => !v?.trim()) &&
+        !(contact.nameSubItems ?? []).some((i) => i.value.trim());
+      if (isEmpty) {
+        await deleteContact(contact.id);
+      }
+    }
+    onClose();
+  }
+
   async function addField() {
     const name = newName.trim();
     if (!name || !contact) return;
@@ -70,6 +84,28 @@ export function ContactCard({
     setNewName('');
     setNewType('text');
     setAdding(false);
+  }
+
+  async function addSubItem() {
+    if (!contact) return;
+    const item: NameSubItem = { id: nanoid(), value: '' };
+    await updateContact(contact.id, {
+      nameSubItems: [...(contact.nameSubItems ?? []), item],
+    });
+  }
+
+  async function updateSubItem(id: string, value: string) {
+    if (!contact) return;
+    await updateContact(contact.id, {
+      nameSubItems: (contact.nameSubItems ?? []).map((i) => (i.id === id ? { ...i, value } : i)),
+    });
+  }
+
+  async function deleteSubItem(id: string) {
+    if (!contact) return;
+    await updateContact(contact.id, {
+      nameSubItems: (contact.nameSubItems ?? []).filter((i) => i.id !== id),
+    });
   }
 
   async function onDragEnd(e: DragEndEvent) {
@@ -84,49 +120,83 @@ export function ContactCard({
 
   if (!contact) return null;
   const currentStatus = statuses.find((s) => s.id === contact.statusId) ?? null;
+  const subItems = contact.nameSubItems ?? [];
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      width={620}
-      title={
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <input
-            value={contact.name}
-            onChange={(e) => updateContact(contact.id, { name: e.target.value })}
-            placeholder="Имя клиента"
-            className="flex-1 min-w-0 text-[15px] font-medium bg-transparent border-none focus:outline-none placeholder:text-ink-300"
-          />
-          <button
-            ref={setStatusAnchor}
-            type="button"
-            onClick={() => setPickerOpen((v) => !v)}
-            className="shrink-0"
-          >
-            <StatusBadge status={currentStatus} placeholder="Без статуса" />
-          </button>
-          <StatusPicker
-            anchor={statusAnchor}
-            open={pickerOpen}
-            onClose={() => setPickerOpen(false)}
-            statuses={statuses}
-            current={contact.statusId}
-            onPick={(id) => updateContact(contact.id, { statusId: id })}
-            onManage={onOpenStatusManager}
-          />
-        </div>
-      }
-    >
-      <div className="p-5 space-y-1">
-        {fields.length === 0 && !adding && (
-          <div className="text-sm text-ink-400 py-6 text-center">
-            Пока нет дополнительных полей.
-            <br />
-            Добавьте телефон, email или другую информацию.
+    <Modal open={open} onClose={handleClose} width={620}>
+      <div className="p-5 space-y-4">
+        {/* Name + Status row */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <label className="block text-[11px] uppercase tracking-wider font-medium text-ink-400 mb-1">
+                Имя клиента
+              </label>
+              <input
+                autoFocus
+                value={contact.name}
+                onChange={(e) => updateContact(contact.id, { name: e.target.value })}
+                placeholder="Введите имя клиента"
+                className="w-full px-3 py-2 text-[15px] font-medium bg-white border border-ink-200 rounded-lg focus:outline-none focus:border-ink-400 placeholder:text-ink-300"
+              />
+            </div>
+            <div className="shrink-0 mt-5">
+              <button
+                ref={setStatusAnchor}
+                type="button"
+                onClick={() => setPickerOpen((v) => !v)}
+              >
+                <StatusBadge status={currentStatus} placeholder="Без статуса" />
+              </button>
+              <StatusPicker
+                anchor={statusAnchor}
+                open={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                statuses={statuses}
+                current={contact.statusId}
+                onPick={(id) => updateContact(contact.id, { statusId: id })}
+                onManage={onOpenStatusManager}
+              />
+            </div>
           </div>
+
+          {/* Sub-items under name */}
+          {subItems.length > 0 && (
+            <div className="pl-0 space-y-1">
+              {subItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-2 group">
+                  <input
+                    value={item.value}
+                    onChange={(e) => updateSubItem(item.id, e.target.value)}
+                    placeholder="Компания, сайт, должность…"
+                    className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-ink-400 placeholder:text-ink-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => deleteSubItem(item.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={addSubItem}
+            className="text-xs text-ink-400 hover:text-ink-700 inline-flex items-center gap-1 transition-colors"
+          >
+            <Plus size={12} /> Добавить подпункт
+          </button>
+        </div>
+
+        {/* Divider */}
+        {(fields.length > 0 || adding) && (
+          <div className="border-t border-ink-100" />
         )}
 
+        {/* Additional fields */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
             {fields.map((field) => (
@@ -158,7 +228,7 @@ export function ContactCard({
         </DndContext>
 
         {adding ? (
-          <div className="border border-ink-200 rounded-lg p-3 mt-3 space-y-2">
+          <div className="border border-ink-200 rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
               <input
                 autoFocus
@@ -169,7 +239,7 @@ export function ContactCard({
                   else if (e.key === 'Escape') setAdding(false);
                 }}
                 placeholder="Название поля (например, «Телефон»)"
-                className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-md focus:border-ink-400"
+                className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-md focus:border-ink-400 focus:outline-none"
               />
               <select
                 value={newType}
@@ -205,7 +275,7 @@ export function ContactCard({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="mt-3 w-full px-3 py-2 text-sm text-ink-500 hover:text-ink-900 hover:bg-ink-100 rounded-md transition-colors inline-flex items-center justify-center gap-1.5"
+            className="w-full px-3 py-2 text-sm text-ink-500 hover:text-ink-900 hover:bg-ink-100 rounded-md transition-colors inline-flex items-center justify-center gap-1.5"
           >
             <Plus size={14} /> Добавить поле
           </button>
@@ -227,7 +297,7 @@ export function ContactCard({
         </button>
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           className="px-3 py-1.5 text-sm font-medium bg-ink-100 hover:bg-ink-200 rounded-md transition-colors"
         >
           Закрыть
@@ -329,7 +399,7 @@ function FieldRow({ field, value, onChange, onToggleVisible, onRename, onDelete 
       <button
         type="button"
         onClick={onToggleVisible}
-        title={field.visibleInTable ? 'Скрыть в общем поле' : 'Показывать в общем поле'}
+        title={field.visibleInTable ? 'Скрыть в таблице' : 'Показывать в таблице'}
         className={`shrink-0 p-1.5 rounded-md transition-colors ${
           field.visibleInTable
             ? 'text-ink-700 hover:bg-ink-100'

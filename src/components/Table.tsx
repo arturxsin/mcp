@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, ArrowUpDown, GripVertical, Settings2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, ArrowUpDown, GripVertical, Settings2, Trash2 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { StatusPicker } from './StatusPicker';
 import { InlineCell } from './InlineCell';
@@ -19,8 +19,10 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { createContact, reorderFields, setColumnWidth, updateContact } from '../db';
+import { bulkDeleteContacts, createContact, reorderFields, setColumnWidth, updateContact } from '../db';
 import type { Board, Contact, FieldDef, Status } from '../types';
+
+const CHECKBOX_W = 36;
 
 type SortDir = 'asc' | 'desc';
 type SortKey = { type: 'name' } | { type: 'status' } | { type: 'field'; fieldId: string };
@@ -58,6 +60,7 @@ export function Table({
 }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [tempWidths, setTempWidths] = useState<Record<string, number>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
 
@@ -148,6 +151,29 @@ export function Table({
     onOpenContact(id);
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === sorted.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sorted.map((c) => c.id)));
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!confirm(`Удалить ${selectedIds.size} клиентов? Это действие необратимо.`)) return;
+    await bulkDeleteContacts([...selectedIds]);
+    setSelectedIds(new Set());
+  }
+
   function handleDrag(key: string, w: number) {
     setTempWidths((prev) => ({ ...prev, [key]: w }));
   }
@@ -191,16 +217,20 @@ export function Table({
   const cols = fields.map((f) => f.id);
   // Total table width for layout
   const totalWidth =
-    widths.status + widths.name + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
+    CHECKBOX_W + widths.status + widths.name + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
+
+  const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto relative">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <table
           className="border-separate border-spacing-0"
           style={{ minWidth: totalWidth }}
         >
           <colgroup>
+            <col style={{ width: CHECKBOX_W }} />
             <col style={{ width: widths.status }} />
             <col style={{ width: widths.name }} />
             {fields.map((f) => (
@@ -210,8 +240,22 @@ export function Table({
           </colgroup>
           <thead className="sticky top-0 z-10 bg-ink-50">
             <tr>
+              {/* Select-all checkbox */}
+              <th
+                style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
+                className="sticky z-[5] bg-ink-50 border-b border-ink-200 px-2"
+              >
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                  onChange={toggleSelectAll}
+                  className="cursor-pointer accent-ink-700"
+                />
+              </th>
               <StatusHeader
                 width={widths.status}
+                left={CHECKBOX_W}
                 onSort={() => toggleSort({ type: 'status' })}
                 sortDir={isSorted({ type: 'status' })}
                 onOpenStatusManager={onOpenStatusManager}
@@ -221,7 +265,7 @@ export function Table({
               />
               <NameHeader
                 width={widths.name}
-                left={widths.status}
+                left={CHECKBOX_W + widths.status}
                 onSort={() => toggleSort({ type: 'name' })}
                 sortDir={isSorted({ type: 'name' })}
                 onDrag={(w) => handleDrag('name', w)}
@@ -248,7 +292,7 @@ export function Table({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={fields.length + 3} className="py-16 text-center">
+                <td colSpan={fields.length + 4} className="py-16 text-center">
                   <div className="text-sm text-ink-400">
                     {contacts.length === 0
                       ? 'Пока нет клиентов. Нажмите «Новый клиент», чтобы создать первого.'
@@ -269,11 +313,14 @@ export function Table({
                   widthForField={widths.forField}
                   onOpenContact={onOpenContact}
                   onOpenStatusManager={onOpenStatusManager}
+                  selected={selectedIds.has(c.id)}
+                  onToggleSelect={() => toggleSelect(c.id)}
+                  anySelected={selectedIds.size > 0}
                 />
               ))
             )}
             <tr>
-              <td colSpan={fields.length + 3} className="border-b border-ink-200">
+              <td colSpan={fields.length + 4} className="border-b border-ink-200">
                 <button
                   type="button"
                   onClick={addRow}
@@ -286,6 +333,28 @@ export function Table({
           </tbody>
         </table>
       </DndContext>
+
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-ink-900 text-white rounded-xl px-4 py-2.5 shadow-2xl text-sm">
+          <span className="text-ink-300">Выбрано: <span className="text-white font-medium">{selectedIds.size}</span></span>
+          <div className="w-px h-4 bg-ink-700" />
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className="inline-flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors font-medium"
+          >
+            <Trash2 size={14} /> Удалить
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-ink-400 hover:text-white transition-colors"
+          >
+            Снять выделение
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -303,6 +372,7 @@ function SortIcon({ dir }: { dir: SortDir | null }) {
 
 function StatusHeader({
   width,
+  left,
   onSort,
   sortDir,
   onOpenStatusManager,
@@ -311,6 +381,7 @@ function StatusHeader({
   onAutoFit,
 }: {
   width: number;
+  left: number;
   onSort: () => void;
   sortDir: SortDir | null;
   onOpenStatusManager: () => void;
@@ -320,7 +391,7 @@ function StatusHeader({
 }) {
   return (
     <th
-      style={{ width, minWidth: width, left: 0 }}
+      style={{ width, minWidth: width, left }}
       className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200 sticky z-[5] group"
     >
       <div className="flex items-center gap-1 pr-3 hover:bg-ink-100 transition-colors">
@@ -448,6 +519,9 @@ function Row({
   widthForField,
   onOpenContact,
   onOpenStatusManager,
+  selected,
+  onToggleSelect,
+  anySelected,
 }: {
   contact: Contact;
   fields: FieldDef[];
@@ -458,15 +532,31 @@ function Row({
   widthForField: (id: string) => number;
   onOpenContact: (id: string) => void;
   onOpenStatusManager: () => void;
+  selected: boolean;
+  onToggleSelect: () => void;
+  anySelected: boolean;
 }) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const subItems = contact.nameSubItems ?? [];
 
   return (
-    <tr className="group hover:bg-ink-50 transition-colors">
+    <tr className={`group hover:bg-ink-50 transition-colors ${selected ? 'bg-indigo-50' : ''}`}>
+      {/* Checkbox */}
       <td
-        style={{ width: widthStatus, maxWidth: widthStatus, left: 0 }}
-        className="sticky z-[4] bg-white group-hover:bg-ink-50 transition-colors border-b border-ink-200 px-3 py-1.5"
+        style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 ${selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50'}`}
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          className={`cursor-pointer accent-ink-700 transition-opacity ${anySelected || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        />
+      </td>
+      <td
+        style={{ width: widthStatus, maxWidth: widthStatus, left: CHECKBOX_W }}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 px-3 py-1.5 ${selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50'}`}
       >
         <button
           ref={setStatusAnchor}
@@ -490,15 +580,15 @@ function Row({
         />
       </td>
       <td
-        style={{ width: widthName, maxWidth: widthName, left: widthStatus }}
-        className="sticky z-[4] bg-white group-hover:bg-ink-50 transition-colors border-b border-ink-200 px-2 py-1"
+        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus }}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 py-1 ${selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50'}`}
       >
-        <div className="flex items-center gap-1">
+        <div className="flex items-start gap-1">
           <button
             type="button"
             onClick={() => onOpenContact(contact.id)}
-            className="shrink-0 text-[10px] uppercase tracking-wider text-ink-300 hover:text-ink-700 px-1.5 py-0.5 rounded hover:bg-ink-100 transition-colors"
             title="Открыть карточку"
+            className="shrink-0 mt-1 text-[10px] text-ink-300 hover:text-ink-700 px-1 py-0.5 rounded hover:bg-ink-100 transition-colors"
           >
             ↗
           </button>
@@ -510,6 +600,11 @@ function Row({
               placeholder="Без имени"
               className="font-medium"
             />
+            {subItems.map((item) => item.value.trim() ? (
+              <div key={item.id} className="text-xs text-ink-400 truncate px-2 mt-0.5">
+                {item.value}
+              </div>
+            ) : null)}
           </div>
         </div>
       </td>

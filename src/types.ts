@@ -17,12 +17,18 @@ export interface Status {
   order: number;
 }
 
+export interface NameSubItem {
+  id: string;
+  value: string;
+}
+
 export interface Contact {
   id: string;
   boardId: string;
   name: string;
   statusId: string | null;
   values: Record<string, string>; // fieldId -> value
+  nameSubItems?: NameSubItem[];
   createdAt: number;
   updatedAt: number;
 }

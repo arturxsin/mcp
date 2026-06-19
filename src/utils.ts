@@ -95,3 +95,11 @@ export function cn(...args: Array<string | false | null | undefined>): string {
 export function looksLikeUrl(s: string): boolean {
   return /^https?:\/\/\S+/.test(s.trim());
 }
+
+export function formatPhone(v: string): string {
+  const d = v.replace(/\D/g, '');
+  if (d.length === 11) {
+    return `${d[0]} ${d.slice(1, 4)} ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9, 11)}`;
+  }
+  return v;
+}

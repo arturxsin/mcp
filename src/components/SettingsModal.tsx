@@ -14,7 +14,7 @@ export function SettingsModal({ open, onClose, settings, onChange }: Props) {
       <div className="p-5 space-y-4">
         <ToggleRow
           label="Аватар клиента"
-          description="Фото в карточке и колонке таблицы"
+          description="Фото в карточке и в столбце с именем"
           checked={settings.avatarEnabled}
           onChange={(v) => onChange({ ...settings, avatarEnabled: v })}
         />

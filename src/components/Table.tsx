@@ -21,10 +21,9 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { bulkDeleteContacts, createContact, reorderFields, setColumnWidth, updateContact } from '../db';
 import type { Board, Contact, FieldDef, Status } from '../types';
-import { looksLikeUrl } from '../utils';
+import { formatPhone, looksLikeUrl } from '../utils';
 
 const CHECKBOX_W = 36;
-const AVATAR_W = 52;
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 type SortDir = 'asc' | 'desc';
@@ -225,11 +224,9 @@ export function Table({
   }
 
   const cols = fields.map((f) => f.id);
-  const avatarColW = avatarEnabled ? AVATAR_W : 0;
 
-  // Total table width for layout
   const totalWidth =
-    CHECKBOX_W + avatarColW + widths.status + widths.name + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
+    CHECKBOX_W + widths.status + widths.name + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
 
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -244,7 +241,6 @@ export function Table({
           <colgroup>
             <col style={{ width: CHECKBOX_W }} />
             <col style={{ width: widths.status }} />
-            {avatarEnabled && <col style={{ width: AVATAR_W }} />}
             <col style={{ width: widths.name }} />
             {fields.map((f) => (
               <col key={f.id} style={{ width: widths.forField(f.id) }} />
@@ -276,15 +272,9 @@ export function Table({
                 onCommit={(w) => handleCommit('status', w)}
                 onAutoFit={() => autoFit('status')}
               />
-              {avatarEnabled && (
-                <th
-                  style={{ width: AVATAR_W, minWidth: AVATAR_W }}
-                  className="bg-ink-50 border-b border-ink-200"
-                />
-              )}
               <NameHeader
                 width={widths.name}
-                left={CHECKBOX_W + widths.status + avatarColW}
+                left={CHECKBOX_W + widths.status}
                 onSort={() => toggleSort({ type: 'name' })}
                 sortDir={isSorted({ type: 'name' })}
                 onDrag={(w) => handleDrag('name', w)}
@@ -336,7 +326,6 @@ export function Table({
                   onToggleSelect={() => toggleSelect(c.id)}
                   anySelected={selectedIds.size > 0}
                   avatarEnabled={avatarEnabled}
-                  avatarColW={avatarColW}
                 />
               ))
             )}
@@ -544,7 +533,6 @@ function Row({
   onToggleSelect,
   anySelected,
   avatarEnabled,
-  avatarColW,
 }: {
   contact: Contact;
   fields: FieldDef[];
@@ -559,11 +547,12 @@ function Row({
   onToggleSelect: () => void;
   anySelected: boolean;
   avatarEnabled: boolean;
-  avatarColW: number;
 }) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const subItems = contact.nameSubItems ?? [];
+  const phones = (contact.phones ?? []).filter((p) => p.trim());
+  const companies = (contact.companies ?? []).filter((c) => c.name.trim() || c.url.trim());
+  const crmUrl = contact.crmUrl?.trim() ?? '';
   const bg = selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50';
 
   return (
@@ -605,55 +594,76 @@ function Row({
           onManage={onOpenStatusManager}
         />
       </td>
-      {/* Avatar — after Status, before Name */}
-      {avatarEnabled && (
-        <td
-          style={{ width: AVATAR_W, minWidth: AVATAR_W, padding: 0, position: 'relative' }}
-          className={`border-b border-ink-200 transition-colors overflow-hidden ${bg}`}
-        >
-          <img
-            src={contact.photo || DEFAULT_AVATAR}
-            alt=""
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        </td>
-      )}
+      {/* Name cell — photo (optional) + name + sub-data */}
       <td
-        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus + avatarColW }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 py-1 ${bg}`}
+        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus }}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 py-1.5 px-2 ${bg}`}
       >
-        <div className="flex items-start gap-1">
-          <button
-            type="button"
-            onClick={() => onOpenContact(contact.id)}
-            title="Открыть карточку"
-            className="shrink-0 mt-1 text-[10px] text-ink-300 hover:text-ink-700 px-1 py-0.5 rounded hover:bg-ink-100 transition-colors"
-          >
-            ↗
-          </button>
-          <div className="flex-1 min-w-0">
-            <InlineCell
-              value={contact.name}
-              type="text"
-              onCommit={(v) => updateContact(contact.id, { name: v })}
-              placeholder="Без имени"
-              className="font-medium"
+        <div className="flex items-start gap-2">
+          {/* Inline photo */}
+          {avatarEnabled && (
+            <img
+              src={contact.photo || DEFAULT_AVATAR}
+              alt=""
+              className="w-8 h-8 rounded-lg object-cover shrink-0 mt-0.5 border border-ink-100"
             />
-            {subItems.map((item) => item.value.trim() ? (
-              <div key={item.id} className="text-xs text-ink-400 truncate px-2 mt-0.5">
-                {looksLikeUrl(item.value) ? (
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => onOpenContact(contact.id)}
+                title="Открыть карточку"
+                className="shrink-0 text-[10px] text-ink-300 hover:text-ink-700 px-1 py-0.5 rounded hover:bg-ink-100 transition-colors"
+              >
+                ↗
+              </button>
+              <InlineCell
+                value={contact.name}
+                type="text"
+                onCommit={(v) => updateContact(contact.id, { name: v })}
+                placeholder="Без имени"
+                className="font-medium"
+              />
+            </div>
+            {/* Phones */}
+            {phones.map((p, i) => (
+              <div key={i} className="text-xs text-ink-500 truncate pl-2 mt-0.5">
+                {formatPhone(p)}
+              </div>
+            ))}
+            {/* Companies */}
+            {companies.map((c) => (
+              <div key={c.id} className="text-xs truncate pl-2 mt-0.5">
+                {c.url ? (
                   <a
-                    href={item.value.trim()}
+                    href={c.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="text-indigo-500 hover:text-indigo-700 hover:underline"
                   >
-                    {item.value}
+                    {c.name || c.url}
                   </a>
-                ) : item.value}
+                ) : (
+                  <span className="text-ink-400">{c.name}</span>
+                )}
               </div>
-            ) : null)}
+            ))}
+            {/* CRM */}
+            {crmUrl && (
+              <div className="pl-2 mt-0.5">
+                <a
+                  href={crmUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-indigo-400 hover:text-indigo-600 hover:underline"
+                >
+                  CRM ↗
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </td>

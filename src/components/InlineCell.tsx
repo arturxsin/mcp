@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FieldType } from '../types';
-import { inputTypeFor, looksLikeUrl, parseLinkValue, placeholderFor } from '../utils';
+import { formatPhone, inputTypeFor, looksLikeUrl, parseLinkValue, placeholderFor } from '../utils';
 
 interface Props {
   value: string;
@@ -59,7 +59,8 @@ export function InlineCell({ value, type, onCommit, placeholder, className }: Pr
   }
 
   if (!editing) {
-    const display = value || '';
+    const raw = value || '';
+    const display = type === 'phone' && raw ? formatPhone(raw) : raw;
     const isEmail = type === 'email' && value;
     const isPhone = type === 'phone' && value;
     const isAutoUrl = type === 'text' && looksLikeUrl(value);

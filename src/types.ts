@@ -22,13 +22,22 @@ export interface NameSubItem {
   value: string;
 }
 
+export interface CompanyEntry {
+  id: string;
+  name: string;
+  url: string;
+}
+
 export interface Contact {
   id: string;
   boardId: string;
   name: string;
   statusId: string | null;
   values: Record<string, string>; // fieldId -> value
-  nameSubItems?: NameSubItem[];
+  nameSubItems?: NameSubItem[]; // legacy
+  phones?: string[];
+  companies?: CompanyEntry[];
+  crmUrl?: string;
   photo?: string; // data URL or external URL
   createdAt: number;
   updatedAt: number;

@@ -169,7 +169,9 @@ export async function createContact(boardId: string, name = ''): Promise<string>
     name,
     statusId: firstStatus?.id ?? null,
     values: {},
-    nameSubItems: [],
+    phones: [],
+    companies: [],
+    crmUrl: '',
     createdAt: now,
     updatedAt: now,
   });

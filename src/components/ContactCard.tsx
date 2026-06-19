@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { Modal } from './Modal';
 import { StatusBadge } from './StatusBadge';
 import { StatusPicker } from './StatusPicker';
-import { Plus, Trash2, GripVertical, Eye, EyeOff, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Eye, EyeOff, X, Link2 } from 'lucide-react';
 import {
   createField,
   deleteContact,
@@ -12,7 +12,7 @@ import {
   updateContact,
   updateField,
 } from '../db';
-import type { Contact, FieldDef, NameSubItem, Status } from '../types';
+import type { CompanyEntry, Contact, FieldDef, Status } from '../types';
 import { FIELD_TYPE_OPTIONS, encodeLinkValue, inputTypeFor, parseLinkValue, placeholderFor } from '../utils';
 import {
   DndContext,
@@ -70,10 +70,14 @@ export function ContactCard({
 
   async function handleClose() {
     if (contact) {
+      const phones = contact.phones ?? [];
+      const companies = contact.companies ?? [];
       const isEmpty =
         !contact.name.trim() &&
         Object.values(contact.values).every((v) => !v?.trim()) &&
-        !(contact.nameSubItems ?? []).some((i) => i.value.trim());
+        !phones.some((p) => p.trim()) &&
+        !companies.some((c) => c.name.trim() || c.url.trim()) &&
+        !contact.crmUrl?.trim();
       if (isEmpty) {
         await deleteContact(contact.id);
       }
@@ -90,28 +94,49 @@ export function ContactCard({
     setAdding(false);
   }
 
-  async function addSubItem() {
+  // --- Phones ---
+  async function addPhone() {
     if (!contact) return;
-    const item: NameSubItem = { id: nanoid(), value: '' };
+    await updateContact(contact.id, { phones: [...(contact.phones ?? []), ''] });
+  }
+
+  async function updatePhone(idx: number, value: string) {
+    if (!contact) return;
+    const next = [...(contact.phones ?? [])];
+    next[idx] = value;
+    await updateContact(contact.id, { phones: next });
+  }
+
+  async function removePhone(idx: number) {
+    if (!contact) return;
     await updateContact(contact.id, {
-      nameSubItems: [...(contact.nameSubItems ?? []), item],
+      phones: (contact.phones ?? []).filter((_, i) => i !== idx),
     });
   }
 
-  async function updateSubItem(id: string, value: string) {
+  // --- Companies ---
+  async function addCompany() {
     if (!contact) return;
     await updateContact(contact.id, {
-      nameSubItems: (contact.nameSubItems ?? []).map((i) => (i.id === id ? { ...i, value } : i)),
+      companies: [...(contact.companies ?? []), { id: nanoid(), name: '', url: '' }],
     });
   }
 
-  async function deleteSubItem(id: string) {
+  async function updateCompany(id: string, patch: Partial<CompanyEntry>) {
     if (!contact) return;
     await updateContact(contact.id, {
-      nameSubItems: (contact.nameSubItems ?? []).filter((i) => i.id !== id),
+      companies: (contact.companies ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
     });
   }
 
+  async function removeCompany(id: string) {
+    if (!contact) return;
+    await updateContact(contact.id, {
+      companies: (contact.companies ?? []).filter((c) => c.id !== id),
+    });
+  }
+
+  // --- Fields DnD ---
   async function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
@@ -134,15 +159,19 @@ export function ContactCard({
   }
 
   if (!contact) return null;
+
   const currentStatus = statuses.find((s) => s.id === contact.statusId) ?? null;
-  const subItems = contact.nameSubItems ?? [];
+  const phones = contact.phones ?? [];
+  const companies = contact.companies ?? [];
+  const crmUrl = contact.crmUrl ?? '';
 
   return (
     <Modal open={open} onClose={handleClose} width={620}>
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-5">
+
         {/* Avatar section */}
         {avatarEnabled && (
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4 pb-1">
             <div className="relative shrink-0">
               <img
                 src={contact.photo || DEFAULT_AVATAR}
@@ -187,107 +216,151 @@ export function ContactCard({
           </div>
         )}
 
-        {/* Name + Status row */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0">
-              <label className="block text-[11px] uppercase tracking-wider font-medium text-ink-400 mb-1">
-                Имя клиента
-              </label>
-              <input
-                autoFocus
-                value={contact.name}
-                onChange={(e) => updateContact(contact.id, { name: e.target.value })}
-                placeholder="Введите имя клиента"
-                className="w-full px-3 py-2 text-[15px] font-medium bg-white border border-ink-200 rounded-lg focus:outline-none focus:border-ink-400 placeholder:text-ink-300"
-              />
-            </div>
-            <div className="shrink-0 mt-5">
-              <button
-                ref={setStatusAnchor}
-                type="button"
-                onClick={() => setPickerOpen((v) => !v)}
-              >
-                <StatusBadge status={currentStatus} placeholder="Без статуса" />
-              </button>
-              <StatusPicker
-                anchor={statusAnchor}
-                open={pickerOpen}
-                onClose={() => setPickerOpen(false)}
-                statuses={statuses}
-                current={contact.statusId}
-                onPick={(id) => updateContact(contact.id, { statusId: id })}
-                onManage={onOpenStatusManager}
-              />
-            </div>
+        {/* Name + Status */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <label className="block text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1">
+              Имя клиента
+            </label>
+            <input
+              autoFocus
+              value={contact.name}
+              onChange={(e) => updateContact(contact.id, { name: e.target.value })}
+              placeholder="Введите имя клиента"
+              className="w-full px-3 py-2 text-[15px] font-medium bg-white border border-ink-200 rounded-lg focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+            />
           </div>
-
-          {/* Sub-items under name */}
-          {subItems.length > 0 && (
-            <div className="pl-0 space-y-1">
-              {subItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 group">
-                  <input
-                    value={item.value}
-                    onChange={(e) => updateSubItem(item.id, e.target.value)}
-                    placeholder="Компания, сайт, должность…"
-                    className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-ink-400 placeholder:text-ink-300"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => deleteSubItem(item.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={addSubItem}
-            className="text-xs text-ink-400 hover:text-ink-700 inline-flex items-center gap-1 transition-colors"
-          >
-            <Plus size={12} /> Добавить подпункт
-          </button>
+          <div className="shrink-0 mt-5">
+            <button
+              ref={setStatusAnchor}
+              type="button"
+              onClick={() => setPickerOpen((v) => !v)}
+            >
+              <StatusBadge status={currentStatus} placeholder="Без статуса" />
+            </button>
+            <StatusPicker
+              anchor={statusAnchor}
+              open={pickerOpen}
+              onClose={() => setPickerOpen(false)}
+              statuses={statuses}
+              current={contact.statusId}
+              onPick={(id) => updateContact(contact.id, { statusId: id })}
+              onManage={onOpenStatusManager}
+            />
+          </div>
         </div>
 
-        {/* Divider */}
-        {(fields.length > 0 || adding) && (
-          <div className="border-t border-ink-100" />
-        )}
-
-        {/* Additional fields */}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-            {fields.map((field) => (
-              <FieldRow
-                key={field.id}
-                field={field}
-                value={contact.values[field.id] ?? ''}
-                onChange={(v) => {
-                  updateContact(contact.id, {
-                    values: { ...contact.values, [field.id]: v },
-                  });
-                }}
-                onToggleVisible={() =>
-                  updateField(field.id, { visibleInTable: !field.visibleInTable })
-                }
-                onRename={(name) => updateField(field.id, { name })}
-                onDelete={async () => {
-                  if (
-                    confirm(
-                      `Удалить поле «${field.name}» из схемы?\nЗначения этого поля будут удалены у всех клиентов.`,
-                    )
-                  ) {
-                    await deleteField(boardId, field.id);
-                  }
-                }}
+        {/* Phones */}
+        <SectionBlock label="Телефоны">
+          {phones.map((p, idx) => (
+            <div key={idx} className="flex items-center gap-2 group">
+              <input
+                type="tel"
+                value={p}
+                onChange={(e) => updatePhone(idx, e.target.value)}
+                placeholder="+7 999 123-45-67"
+                className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
               />
-            ))}
-          </SortableContext>
-        </DndContext>
+              <button
+                type="button"
+                onClick={() => removePhone(idx)}
+                className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          <AddButton onClick={addPhone} label="Добавить номер" />
+        </SectionBlock>
+
+        {/* Companies */}
+        <SectionBlock label="Компании">
+          {companies.map((c) => (
+            <div key={c.id} className="flex items-center gap-2 group">
+              <input
+                value={c.name}
+                onChange={(e) => updateCompany(c.id, { name: e.target.value })}
+                placeholder="Название компании"
+                className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+              />
+              <input
+                type="url"
+                value={c.url}
+                onChange={(e) => updateCompany(c.id, { url: e.target.value })}
+                placeholder="https://..."
+                className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+              />
+              <button
+                type="button"
+                onClick={() => removeCompany(c.id)}
+                className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded shrink-0"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          <AddButton onClick={addCompany} label="Добавить компанию" />
+        </SectionBlock>
+
+        {/* CRM */}
+        <SectionBlock label="CRM">
+          <div className="flex items-center gap-2">
+            <Link2 size={14} className="text-ink-400 shrink-0" />
+            <input
+              type="url"
+              value={crmUrl}
+              onChange={(e) => updateContact(contact.id, { crmUrl: e.target.value })}
+              placeholder="https://crm.example.com/..."
+              className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+            />
+            {crmUrl && (
+              <a
+                href={crmUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-indigo-600 hover:text-indigo-800 shrink-0 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Открыть ↗
+              </a>
+            )}
+          </div>
+        </SectionBlock>
+
+        {/* Custom fields */}
+        {(fields.length > 0 || adding) && (
+          <div className="border-t border-ink-100 pt-1">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                {fields.map((field) => (
+                  <FieldRow
+                    key={field.id}
+                    field={field}
+                    value={contact.values[field.id] ?? ''}
+                    onChange={(v) =>
+                      updateContact(contact.id, {
+                        values: { ...contact.values, [field.id]: v },
+                      })
+                    }
+                    onToggleVisible={() =>
+                      updateField(field.id, { visibleInTable: !field.visibleInTable })
+                    }
+                    onRename={(name) => updateField(field.id, { name })}
+                    onDelete={async () => {
+                      if (
+                        confirm(
+                          `Удалить поле «${field.name}» из схемы?\nЗначения этого поля будут удалены у всех клиентов.`,
+                        )
+                      ) {
+                        await deleteField(boardId, field.id);
+                      }
+                    }}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
 
         {adding ? (
           <div className="border border-ink-200 rounded-lg p-3 space-y-2">
@@ -301,7 +374,7 @@ export function ContactCard({
                   else if (e.key === 'Escape') setAdding(false);
                 }}
                 placeholder="Название поля (например, «Телефон»)"
-                className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-md focus:border-ink-400 focus:outline-none"
+                className="flex-1 px-3 py-2 text-sm border border-ink-200 rounded-md focus:border-indigo-400 focus:outline-none"
               />
               <select
                 value={newType}
@@ -366,6 +439,27 @@ export function ContactCard({
         </button>
       </div>
     </Modal>
+  );
+}
+
+function SectionBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-xs text-ink-400 hover:text-indigo-600 inline-flex items-center gap-1 transition-colors"
+    >
+      <Plus size={12} /> {label}
+    </button>
   );
 }
 
@@ -449,28 +543,21 @@ function FieldRow({ field, value, onChange, onToggleVisible, onRename, onDelete 
                 setRenaming(false);
               }
             }}
-            className="w-full text-xs text-ink-700 bg-white border border-ink-300 rounded px-1.5 py-0.5"
+            className="w-full text-xs font-medium text-ink-700 border-b border-ink-300 focus:outline-none bg-transparent pb-0.5"
           />
         ) : (
           <button
             type="button"
-            onClick={() => setRenaming(true)}
-            className="text-xs text-ink-500 hover:text-ink-900 text-left"
+            onDoubleClick={() => setRenaming(true)}
+            title="Двойной клик — переименовать"
+            className="text-xs font-medium text-ink-500 text-left w-full truncate hover:text-ink-900 transition-colors"
           >
             {field.name}
           </button>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        {field.type === 'note' ? (
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholderFor(field.type)}
-            rows={2}
-            className="w-full px-2 py-1.5 text-sm bg-transparent border border-transparent hover:border-ink-200 focus:border-ink-300 focus:bg-white rounded-md resize-none transition-colors placeholder:text-ink-300"
-          />
-        ) : field.type === 'link' ? (
+        {field.type === 'link' ? (
           <LinkFieldInput value={value} onChange={onChange} />
         ) : (
           <input
@@ -482,26 +569,24 @@ function FieldRow({ field, value, onChange, onToggleVisible, onRename, onDelete 
           />
         )}
       </div>
-      <button
-        type="button"
-        onClick={onToggleVisible}
-        title={field.visibleInTable ? 'Скрыть в таблице' : 'Показывать в таблице'}
-        className={`shrink-0 p-1.5 rounded-md transition-colors ${
-          field.visibleInTable
-            ? 'text-ink-700 hover:bg-ink-100'
-            : 'text-ink-300 hover:text-ink-500 hover:bg-ink-100'
-        }`}
-      >
-        {field.visibleInTable ? <Eye size={14} /> : <EyeOff size={14} />}
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 shrink-0 p-1.5 text-ink-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
-        aria-label="Удалить поле"
-      >
-        <Trash2 size={14} />
-      </button>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity pt-1.5">
+        <button
+          type="button"
+          onClick={onToggleVisible}
+          title={field.visibleInTable ? 'Скрыть в таблице' : 'Показать в таблице'}
+          className="p-1 text-ink-400 hover:text-ink-700 rounded transition-colors"
+        >
+          {field.visibleInTable ? <Eye size={13} /> : <EyeOff size={13} />}
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          title="Удалить поле"
+          className="p-1 text-ink-400 hover:text-red-500 rounded transition-colors"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
     </div>
   );
 }

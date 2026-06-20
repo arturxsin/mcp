@@ -613,9 +613,9 @@ function Row({
           onManage={onOpenStatusManager}
         />
       </td>
-      {/* Name cell — photo stretches full height via absolute, content padded */}
+      {/* Name cell — sticky td acts as containing block; photo absolute-fills height */}
       <td
-        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus, position: 'relative', padding: 0 }}
+        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus, padding: 0 }}
         className={`sticky z-[4] transition-colors border-b border-ink-200 overflow-hidden ${bg}`}
       >
         {avatarEnabled && (

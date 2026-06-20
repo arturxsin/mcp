@@ -32,6 +32,7 @@ type SortKey = { type: 'name' } | { type: 'status' } | { type: 'field'; fieldId:
 const DEFAULT_WIDTHS = {
   status: 140,
   name: 220,
+  phones: 160,
   field: 180,
 };
 
@@ -76,6 +77,7 @@ export function Table({
     return {
       status: tempWidths.status ?? persisted.status ?? DEFAULT_WIDTHS.status,
       name: tempWidths.name ?? persisted.name ?? DEFAULT_WIDTHS.name,
+      phones: tempWidths.phones ?? persisted.phones ?? DEFAULT_WIDTHS.phones,
       forField: (id: string) => tempWidths[id] ?? persisted[id] ?? DEFAULT_WIDTHS.field,
     };
   }, [board, tempWidths]);
@@ -206,6 +208,9 @@ export function Table({
     } else if (key === 'name') {
       samples.push('Имя клиента');
       for (const c of sorted) samples.push(c.name);
+    } else if (key === 'phones') {
+      samples.push('Телефоны');
+      for (const c of sorted) for (const p of (c.phones ?? [])) if (p) samples.push(formatPhone(p));
     } else {
       const f = fields.find((x) => x.id === key);
       if (f) samples.push(f.name);
@@ -226,7 +231,7 @@ export function Table({
   const cols = fields.map((f) => f.id);
 
   const totalWidth =
-    CHECKBOX_W + widths.status + widths.name + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
+    CHECKBOX_W + widths.status + widths.name + widths.phones + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
 
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -242,6 +247,7 @@ export function Table({
             <col style={{ width: CHECKBOX_W }} />
             <col style={{ width: widths.status }} />
             <col style={{ width: widths.name }} />
+            <col style={{ width: widths.phones }} />
             {fields.map((f) => (
               <col key={f.id} style={{ width: widths.forField(f.id) }} />
             ))}
@@ -281,6 +287,17 @@ export function Table({
                 onCommit={(w) => handleCommit('name', w)}
                 onAutoFit={() => autoFit('name')}
               />
+              <th
+                style={{ width: widths.phones, minWidth: widths.phones }}
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+              >
+                <div className="px-3 py-2.5">Телефоны</div>
+                <ColumnResizer
+                  onDrag={(w) => handleDrag('phones', w)}
+                  onCommit={(w) => handleCommit('phones', w)}
+                  onAutoFit={() => autoFit('phones')}
+                />
+              </th>
               <SortableContext items={cols} strategy={horizontalListSortingStrategy}>
                 {fields.map((f) => (
                   <SortableHeader
@@ -301,7 +318,7 @@ export function Table({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={fields.length + 4} className="py-16 text-center">
+                <td colSpan={fields.length + 5} className="py-16 text-center">
                   <div className="text-sm text-ink-400">
                     {contacts.length === 0
                       ? 'Пока нет клиентов. Нажмите «Новый клиент», чтобы создать первого.'
@@ -319,6 +336,7 @@ export function Table({
                   statuses={statuses}
                   widthStatus={widths.status}
                   widthName={widths.name}
+                  widthPhones={widths.phones}
                   widthForField={widths.forField}
                   onOpenContact={onOpenContact}
                   onOpenStatusManager={onOpenStatusManager}
@@ -330,7 +348,7 @@ export function Table({
               ))
             )}
             <tr>
-              <td colSpan={fields.length + 4} className="border-b border-ink-200">
+              <td colSpan={fields.length + 5} className="border-b border-ink-200">
                 <button
                   type="button"
                   onClick={addRow}
@@ -519,6 +537,8 @@ function SortableHeader({
   );
 }
 
+const PHOTO_W = 44;
+
 function Row({
   contact,
   fields,
@@ -526,6 +546,7 @@ function Row({
   statuses,
   widthStatus,
   widthName,
+  widthPhones,
   widthForField,
   onOpenContact,
   onOpenStatusManager,
@@ -540,6 +561,7 @@ function Row({
   statuses: Status[];
   widthStatus: number;
   widthName: number;
+  widthPhones: number;
   widthForField: (id: string) => number;
   onOpenContact: (id: string) => void;
   onOpenStatusManager: () => void;
@@ -576,10 +598,7 @@ function Row({
         <button
           ref={setStatusAnchor}
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setPickerOpen(true);
-          }}
+          onClick={(e) => { e.stopPropagation(); setPickerOpen(true); }}
           className="inline-block max-w-full"
         >
           <StatusBadge status={status} size="sm" placeholder="—" />
@@ -594,30 +613,21 @@ function Row({
           onManage={onOpenStatusManager}
         />
       </td>
-      {/* Name cell — photo (optional) + name + sub-data */}
+      {/* Name cell — photo stretches full height via absolute, content padded */}
       <td
-        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 py-1.5 px-2 ${bg}`}
+        style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus, position: 'relative', padding: 0 }}
+        className={`sticky z-[4] transition-colors border-b border-ink-200 overflow-hidden ${bg}`}
       >
-        <div className="flex items-start gap-2">
-          {/* Inline photo */}
-          {avatarEnabled && (
-            <img
-              src={contact.photo || DEFAULT_AVATAR}
-              alt=""
-              className="w-8 h-8 rounded-lg object-cover shrink-0 mt-0.5 border border-ink-100"
-            />
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => onOpenContact(contact.id)}
-                title="Открыть карточку"
-                className="shrink-0 text-[10px] text-ink-300 hover:text-ink-700 px-1 py-0.5 rounded hover:bg-ink-100 transition-colors"
-              >
-                ↗
-              </button>
+        {avatarEnabled && (
+          <img
+            src={contact.photo || DEFAULT_AVATAR}
+            alt=""
+            style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: PHOTO_W, height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        )}
+        <div style={{ paddingLeft: avatarEnabled ? PHOTO_W + 8 : 8, paddingRight: 8, paddingTop: 6, paddingBottom: 6 }}>
+          <div className="flex items-center gap-1 min-w-0">
+            <div className="flex-1 min-w-0">
               <InlineCell
                 value={contact.name}
                 type="text"
@@ -626,46 +636,59 @@ function Row({
                 className="font-medium"
               />
             </div>
-            {/* Phones */}
-            {phones.map((p, i) => (
-              <div key={i} className="text-xs text-ink-500 truncate pl-2 mt-0.5">
-                {formatPhone(p)}
-              </div>
-            ))}
-            {/* Companies */}
-            {companies.map((c) => (
-              <div key={c.id} className="text-xs truncate pl-2 mt-0.5">
-                {c.url ? (
-                  <a
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-indigo-500 hover:text-indigo-700 hover:underline"
-                  >
-                    {c.name || c.url}
-                  </a>
-                ) : (
-                  <span className="text-ink-400">{c.name}</span>
-                )}
-              </div>
-            ))}
-            {/* CRM */}
-            {crmUrl && (
-              <div className="pl-2 mt-0.5">
+            <button
+              type="button"
+              onClick={() => onOpenContact(contact.id)}
+              title="Открыть карточку"
+              className="shrink-0 opacity-0 group-hover:opacity-100 text-[10px] text-ink-400 hover:text-ink-700 px-1 py-0.5 rounded hover:bg-ink-100 transition-all"
+            >
+              ↗
+            </button>
+          </div>
+          {/* Companies */}
+          {companies.map((c) => (
+            <div key={c.id} className="text-xs truncate mt-0.5 pl-2">
+              {c.url ? (
                 <a
-                  href={crmUrl}
+                  href={c.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="text-xs text-indigo-400 hover:text-indigo-600 hover:underline"
+                  className="text-ink-500 hover:text-ink-900 hover:underline"
                 >
-                  CRM ↗
+                  {c.name || c.url}
                 </a>
-              </div>
-            )}
-          </div>
+              ) : (
+                <span className="text-ink-400">{c.name}</span>
+              )}
+            </div>
+          ))}
+          {/* CRM */}
+          {crmUrl && (
+            <div className="mt-0.5 pl-2">
+              <a
+                href={crmUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-indigo-400 hover:text-indigo-600 hover:underline"
+              >
+                CRM ↗
+              </a>
+            </div>
+          )}
         </div>
+      </td>
+      {/* Phones — separate column */}
+      <td
+        style={{ width: widthPhones, maxWidth: widthPhones }}
+        className="border-b border-ink-200 px-3 py-1.5 align-top"
+      >
+        {phones.map((p, i) => (
+          <div key={i} className="text-sm text-ink-700 truncate">
+            {formatPhone(p)}
+          </div>
+        ))}
       </td>
       {fields.map((f) => {
         const w = widthForField(f.id);
@@ -679,9 +702,7 @@ function Row({
               value={contact.values[f.id] ?? ''}
               type={f.type}
               onCommit={(v) =>
-                updateContact(contact.id, {
-                  values: { ...contact.values, [f.id]: v },
-                })
+                updateContact(contact.id, { values: { ...contact.values, [f.id]: v } })
               }
             />
           </td>

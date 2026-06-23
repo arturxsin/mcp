@@ -158,7 +158,7 @@ export function Table({
   }
 
   async function addRow() {
-    const id = await createContact(boardId);
+    const id = await createContact(boardId, '', sidebarTab ?? undefined);
     onOpenContact(id);
   }
 

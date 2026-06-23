@@ -154,20 +154,19 @@ export async function deleteBoard(boardId: string) {
   });
 }
 
-export async function createContact(boardId: string, name = ''): Promise<string> {
+export async function createContact(boardId: string, name = '', statusId?: string): Promise<string> {
   const id = nanoid();
   const now = Date.now();
-  // Default to first status
-  const firstStatus = await db.statuses
+  const resolvedStatusId = statusId ?? await db.statuses
     .where('boardId')
     .equals(boardId)
     .sortBy('order')
-    .then((arr) => arr[0]);
+    .then((arr) => arr[0]?.id ?? null);
   await db.contacts.add({
     id,
     boardId,
     name,
-    statusId: firstStatus?.id ?? null,
+    statusId: resolvedStatusId,
     values: {},
     phones: [],
     companies: [],

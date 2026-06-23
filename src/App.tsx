@@ -110,7 +110,7 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         if (!currentBoardId) return;
-        if (view === 'kanban') createContact(currentBoardId).then(setOpenContactId);
+        if (view === 'kanban') createContact(currentBoardId, '', sidebarTab ?? undefined).then(setOpenContactId);
         else createSoldEntry(currentBoardId);
       }
     }
@@ -162,7 +162,7 @@ export default function App() {
             <button
               type="button"
               onClick={async () => {
-                const id = await createContact(currentBoardId);
+                const id = await createContact(currentBoardId, '', sidebarTab ?? undefined);
                 setOpenContactId(id);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-ink-900 text-white rounded-md hover:bg-ink-700 transition-colors"

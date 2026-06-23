@@ -30,7 +30,7 @@ const TOUCH_COL_W = 120;
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 type SortDir = 'asc' | 'desc';
-type SortKey = { type: 'name' } | { type: 'status' } | { type: 'field'; fieldId: string };
+type SortKey = { type: 'name' } | { type: 'status' } | { type: 'touch' } | { type: 'field'; fieldId: string };
 
 const DEFAULT_WIDTHS = {
   status: 140,
@@ -116,6 +116,11 @@ export function Table({
         if (!ids.length) return Number.MAX_SAFE_INTEGER;
         const orders = ids.map((id) => statusMap.get(id)?.order ?? Number.MAX_SAFE_INTEGER);
         return Math.min(...orders);
+      }
+      if (sort.key.type === 'touch') {
+        const ts = c.lastTouchedAt ?? 0;
+        if (ts === 0) return Number.MAX_SAFE_INTEGER;
+        return Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
       }
       return (c.values[sort.key.fieldId] ?? '').toLowerCase();
     };
@@ -304,10 +309,17 @@ export function Table({
                 style={{ width: widths.touch, minWidth: widths.touch }}
                 className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
               >
-                <div className="px-3 py-2.5 flex items-center gap-1.5">
-                  <Clock size={11} />
-                  Касание
-                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSort({ type: 'touch' })}
+                  className="w-full flex items-center justify-between gap-1 px-3 py-2.5 hover:bg-ink-100 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={11} />
+                    Касание
+                  </span>
+                  <SortIcon dir={isSorted({ type: 'touch' })} />
+                </button>
                 <ColumnResizer
                   onDrag={(w) => handleDrag('touch', w)}
                   onCommit={(w) => handleCommit('touch', w)}
@@ -718,13 +730,14 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
         type="button"
         onClick={() => updateContact(contact.id, { lastTouchedAt: Date.now() })}
         title="Отметить касание"
-        className="p-0.5 text-ink-300 hover:text-indigo-500 transition-colors shrink-0"
+        className="p-0.5 transition-colors shrink-0"
+        style={{ color: days !== null ? badgeColor : '#9ca3af' }}
       >
         <Clock size={13} />
       </button>
       {days !== null ? (
         <span style={{ color: badgeColor }} className="text-sm font-medium tabular-nums whitespace-nowrap">
-          {days}д
+          {days}
         </span>
       ) : (
         <span className="text-ink-300 text-sm">—</span>

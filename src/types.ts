@@ -33,6 +33,12 @@ export interface CompanyEntry {
   url: string;
 }
 
+export interface PhoneEntry {
+  value: string;
+  wa: boolean;
+  tg: boolean;
+}
+
 export interface Contact {
   id: string;
   boardId: string;
@@ -41,7 +47,7 @@ export interface Contact {
   values: Record<string, string>; // fieldId -> value
   nameSubItems?: NameSubItem[]; // legacy
   statusIds?: string[];       // replaces statusId after v4 migration
-  phones?: string[];
+  phones?: PhoneEntry[];
   companies?: CompanyEntry[];
   nameUrl?: string;
   lastTouchedAt?: number;     // ms timestamp; 0 = never

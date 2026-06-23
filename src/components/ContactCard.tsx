@@ -12,7 +12,7 @@ import {
   updateContact,
   updateField,
 } from '../db';
-import type { CompanyEntry, Contact, FieldDef, Status } from '../types';
+import type { CompanyEntry, Contact, FieldDef, PhoneEntry, Status } from '../types';
 import { FIELD_TYPE_OPTIONS, encodeLinkValue, formatBudget, inputTypeFor, parseLinkValue, placeholderFor } from '../utils';
 import {
   DndContext,
@@ -77,7 +77,7 @@ export function ContactCard({
       const isEmpty =
         !contact.name.trim() &&
         Object.values(contact.values).every((v) => !v?.trim()) &&
-        !phones.some((p) => p.trim()) &&
+        !phones.some((p) => p.value?.trim()) &&
         !companies.some((c) => c.name.trim() || c.url.trim()) &&
         !contact.nameUrl?.trim();
       if (isEmpty) {
@@ -99,13 +99,21 @@ export function ContactCard({
   // --- Phones ---
   async function addPhone() {
     if (!contact) return;
-    await updateContact(contact.id, { phones: [...(contact.phones ?? []), ''] });
+    const entry: PhoneEntry = { value: '', wa: false, tg: false };
+    await updateContact(contact.id, { phones: [...(contact.phones ?? []), entry] });
   }
 
   async function updatePhone(idx: number, value: string) {
     if (!contact) return;
     const next = [...(contact.phones ?? [])];
-    next[idx] = value;
+    next[idx] = { ...next[idx], value };
+    await updateContact(contact.id, { phones: next });
+  }
+
+  async function updatePhoneFlag(idx: number, flag: 'wa' | 'tg', val: boolean) {
+    if (!contact) return;
+    const next = [...(contact.phones ?? [])];
+    next[idx] = { ...next[idx], [flag]: val };
     await updateContact(contact.id, { phones: next });
   }
 
@@ -356,29 +364,47 @@ export function ContactCard({
         {/* Телефоны */}
         <SectionBlock label="Телефоны">
           {phones.map((p, idx) => {
-            const digits = p.replace(/\D/g, '');
+            const digits = p.value.replace(/\D/g, '');
             return (
               <div key={idx} className="flex items-center gap-2 group">
                 <input
                   type="tel"
-                  value={p}
+                  value={p.value}
                   onChange={(e) => updatePhone(idx, e.target.value)}
                   placeholder="+7 999 123-45-67"
                   className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
                 />
-                {digits.length >= 7 && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[10px] font-bold text-green-600 hover:text-green-700 px-1 py-0.5 rounded hover:bg-green-50 transition-colors"
-                      title="WhatsApp"
-                    >WA</a>
-                    <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1 py-0.5 rounded hover:bg-sky-50 transition-colors"
-                      title="Telegram"
-                    >TG</a>
-                  </div>
+                <label className="flex items-center gap-0.5 text-[10px] font-bold text-green-600 cursor-pointer shrink-0 select-none">
+                  <input
+                    type="checkbox"
+                    checked={p.wa}
+                    onChange={(e) => updatePhoneFlag(idx, 'wa', e.target.checked)}
+                    className="accent-green-600 w-3 h-3"
+                  />
+                  WA
+                </label>
+                <label className="flex items-center gap-0.5 text-[10px] font-bold text-sky-500 cursor-pointer shrink-0 select-none">
+                  <input
+                    type="checkbox"
+                    checked={p.tg}
+                    onChange={(e) => updatePhoneFlag(idx, 'tg', e.target.checked)}
+                    className="accent-sky-500 w-3 h-3"
+                  />
+                  TG
+                </label>
+                {p.wa && digits.length >= 7 && (
+                  <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] font-bold text-green-600 hover:text-green-700 px-1 py-0.5 rounded hover:bg-green-50 transition-colors shrink-0"
+                    title="WhatsApp"
+                  >↗</a>
+                )}
+                {p.tg && digits.length >= 7 && (
+                  <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
+                    title="Telegram"
+                  >↗</a>
                 )}
                 <button type="button" onClick={() => removePhone(idx)}
                   className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"

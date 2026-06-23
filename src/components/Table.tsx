@@ -229,7 +229,7 @@ export function Table({
       for (const c of sorted) samples.push(c.name);
     } else if (key === 'phones') {
       samples.push('Телефоны');
-      for (const c of sorted) for (const p of (c.phones ?? [])) if (p) samples.push(formatPhone(p));
+      for (const c of sorted) for (const p of (c.phones ?? [])) if (p.value) samples.push(formatPhone(p.value));
     } else if (key === 'location') {
       samples.push('Локация');
       for (const c of sorted) if (c.location) samples.push(c.location);
@@ -593,7 +593,7 @@ function Row({
 }) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const phones = (contact.phones ?? []).filter((p) => p.trim());
+  const phones = (contact.phones ?? []).filter((p) => p.value?.trim());
   const companies = (contact.companies ?? []).filter((c) => c.name.trim() || c.url.trim());
   const nameUrl = contact.nameUrl?.trim() ?? '';
   const bg = selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50';
@@ -723,22 +723,26 @@ function Row({
         className="border-b border-ink-200 px-3 py-1.5"
       >
         {phones.map((p, i) => {
-          const digits = p.replace(/\D/g, '');
+          const digits = p.value.replace(/\D/g, '');
           return (
             <div key={i} className="flex items-center gap-1 min-w-0">
-              <span className="text-sm text-ink-700 truncate flex-1">{formatPhone(p)}</span>
-              {digits.length >= 7 && (
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[9px] font-bold text-green-600 hover:text-green-700 px-0.5 leading-none"
-                    title="WhatsApp"
-                  >WA</a>
-                  <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[9px] font-bold text-sky-500 hover:text-sky-600 px-0.5 leading-none"
-                    title="Telegram"
-                  >TG</a>
+              <span className="text-sm text-ink-700 truncate flex-1">{formatPhone(p.value)}</span>
+              {(p.wa || p.tg) && digits.length >= 7 && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {p.wa && (
+                    <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[9px] font-bold text-green-600 hover:text-green-700 px-0.5 leading-none"
+                      title="WhatsApp"
+                    >WA</a>
+                  )}
+                  {p.tg && (
+                    <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[9px] font-bold text-sky-500 hover:text-sky-600 px-0.5 leading-none"
+                      title="Telegram"
+                    >TG</a>
+                  )}
                 </div>
               )}
             </div>

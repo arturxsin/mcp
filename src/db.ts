@@ -79,6 +79,26 @@ class CrmDB extends Dexie {
           if (c.lastTouchComment === undefined) c.lastTouchComment = '';
         });
       });
+    this.version(5)
+      .stores({
+        boards: 'id, order',
+        statuses: 'id, boardId, order',
+        fields: 'id, boardId, order',
+        contacts: 'id, boardId, createdAt, updatedAt',
+        meta: 'key',
+        sold: 'id, boardId, contactId, order, createdAt',
+        soldFields: 'id, boardId, order',
+        soldTemplates: 'id, boardId, order',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('contacts').toCollection().modify((c: any) => {
+          if (Array.isArray(c.phones)) {
+            c.phones = c.phones.map((p: any) =>
+              typeof p === 'string' ? { value: p, wa: false, tg: false } : p
+            );
+          }
+        });
+      });
   }
 }
 

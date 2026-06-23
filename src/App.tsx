@@ -226,6 +226,8 @@ export default function App() {
               sidebarTab={sidebarTab}
               avatarEnabled={settings.avatarEnabled}
               touchThresholds={settings.touchThresholds}
+              budgetThresholds={settings.budgetThresholds}
+              budgetColorEnabled={settings.budgetColorEnabled}
             />
 
             <ColumnPicker

@@ -1,6 +1,7 @@
 import { Modal } from './Modal';
 import type { AppSettings } from '../settings';
-import { DEFAULT_TOUCH_THRESHOLDS } from '../settings';
+import { DEFAULT_TOUCH_THRESHOLDS, DEFAULT_BUDGET_THRESHOLDS } from '../settings';
+import { formatBudget } from '../utils';
 
 interface Props {
   open: boolean;
@@ -69,6 +70,62 @@ export function SettingsModal({ open, onClose, settings, onChange }: Props) {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Budget */}
+        <div className="border-t border-ink-100 pt-5 space-y-3">
+          <div className="text-sm font-medium text-ink-900">Бюджет</div>
+          <ToggleRow
+            label="Цвет бюджета"
+            description="Окрашивать сумму по порогам"
+            checked={settings.budgetColorEnabled}
+            onChange={(v) => onChange({ ...settings, budgetColorEnabled: v })}
+          />
+          {settings.budgetColorEnabled && (
+            <div className="space-y-2 pt-1">
+              {settings.budgetThresholds.map((t, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xs text-ink-400 w-4 shrink-0">≤</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={t.amount > 0 ? String(t.amount) : ''}
+                    onChange={(e) => {
+                      const amount = parseInt(e.target.value.replace(/\D/g, '')) || 0;
+                      const next = settings.budgetThresholds.map((x, j) =>
+                        j === i ? { ...x, amount } : x
+                      );
+                      onChange({ ...settings, budgetThresholds: next });
+                    }}
+                    placeholder="0"
+                    className="w-28 px-2 py-1 text-sm border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 tabular-nums text-right"
+                  />
+                  <span className="text-xs text-ink-400 w-20 shrink-0 truncate">
+                    {t.amount > 0 ? formatBudget(t.amount) : ''}
+                  </span>
+                  <input
+                    type="color"
+                    value={t.color}
+                    onChange={(e) => {
+                      const next = settings.budgetThresholds.map((x, j) =>
+                        j === i ? { ...x, color: e.target.value } : x
+                      );
+                      onChange({ ...settings, budgetThresholds: next });
+                    }}
+                    className="w-8 h-7 rounded border border-ink-200 cursor-pointer p-0.5 shrink-0"
+                  />
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => onChange({ ...settings, budgetThresholds: DEFAULT_BUDGET_THRESHOLDS })}
+                className="text-xs text-ink-400 hover:text-indigo-600 transition-colors"
+              >
+                Сброс
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <div className="border-t border-ink-200 px-5 py-3 flex justify-end">

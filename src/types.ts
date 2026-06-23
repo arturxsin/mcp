@@ -42,6 +42,7 @@ export interface Contact {
   lastTouchedAt?: number;     // ms timestamp; 0 = never
   lastTouchComment?: string;
   location?: string;
+  budget?: number;
   photo?: string;
   createdAt: number;
   updatedAt: number;

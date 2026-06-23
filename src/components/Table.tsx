@@ -22,16 +22,17 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { bulkDeleteContacts, createContact, reorderFields, setColumnWidth, updateContact } from '../db';
 import type { Board, Contact, FieldDef, Status } from '../types';
-import type { TouchThreshold } from '../settings';
-import { formatPhone } from '../utils';
+import type { TouchThreshold, BudgetThreshold } from '../settings';
+import { formatPhone, formatBudget } from '../utils';
 
 const CHECKBOX_W = 36;
 const TOUCH_COL_W = 120;
 const LOCATION_COL_W = 140;
+const BUDGET_COL_W = 150;
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 type SortDir = 'asc' | 'desc';
-type SortKey = { type: 'name' } | { type: 'status' } | { type: 'touch' } | { type: 'field'; fieldId: string };
+type SortKey = { type: 'name' } | { type: 'status' } | { type: 'touch' } | { type: 'budget' } | { type: 'field'; fieldId: string };
 
 const DEFAULT_WIDTHS = {
   status: 140,
@@ -39,6 +40,7 @@ const DEFAULT_WIDTHS = {
   phones: 160,
   touch: TOUCH_COL_W,
   location: LOCATION_COL_W,
+  budget: BUDGET_COL_W,
   field: 180,
 };
 
@@ -56,6 +58,8 @@ interface Props {
   sidebarTab: string | null;
   avatarEnabled: boolean;
   touchThresholds: TouchThreshold[];
+  budgetThresholds: BudgetThreshold[];
+  budgetColorEnabled: boolean;
 }
 
 export function Table({
@@ -72,6 +76,8 @@ export function Table({
   sidebarTab,
   avatarEnabled,
   touchThresholds,
+  budgetThresholds,
+  budgetColorEnabled,
 }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [tempWidths, setTempWidths] = useState<Record<string, number>>({});
@@ -87,6 +93,7 @@ export function Table({
       phones: tempWidths.phones ?? persisted.phones ?? DEFAULT_WIDTHS.phones,
       touch: tempWidths.touch ?? persisted.touch ?? DEFAULT_WIDTHS.touch,
       location: tempWidths.location ?? persisted.location ?? DEFAULT_WIDTHS.location,
+      budget: tempWidths.budget ?? persisted.budget ?? DEFAULT_WIDTHS.budget,
       forField: (id: string) => tempWidths[id] ?? persisted[id] ?? DEFAULT_WIDTHS.field,
     };
   }, [board, tempWidths]);
@@ -125,6 +132,7 @@ export function Table({
         if (ts === 0) return Number.MAX_SAFE_INTEGER;
         return Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
       }
+      if (sort.key.type === 'budget') return c.budget ?? 0;
       return (c.values[sort.key.fieldId] ?? '').toLowerCase();
     };
     return [...filtered].sort((a, b) => {
@@ -225,6 +233,9 @@ export function Table({
     } else if (key === 'location') {
       samples.push('Локация');
       for (const c of sorted) if (c.location) samples.push(c.location);
+    } else if (key === 'budget') {
+      samples.push('Бюджет');
+      for (const c of sorted) if (c.budget) samples.push(formatBudget(c.budget));
     } else {
       const f = fields.find((x) => x.id === key);
       if (f) samples.push(f.name);
@@ -243,7 +254,7 @@ export function Table({
   const cols = fields.map((f) => f.id);
 
   const totalWidth =
-    CHECKBOX_W + widths.status + widths.name + widths.phones + widths.location + widths.touch +
+    CHECKBOX_W + widths.status + widths.name + widths.phones + widths.location + widths.budget + widths.touch +
     fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
 
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
@@ -262,6 +273,7 @@ export function Table({
             <col style={{ width: widths.name }} />
             <col style={{ width: widths.phones }} />
             <col style={{ width: widths.location }} />
+            <col style={{ width: widths.budget }} />
             <col style={{ width: widths.touch }} />
             {fields.map((f) => (
               <col key={f.id} style={{ width: widths.forField(f.id) }} />
@@ -324,6 +336,24 @@ export function Table({
                 />
               </th>
               <th
+                style={{ width: widths.budget, minWidth: widths.budget }}
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleSort({ type: 'budget' })}
+                  className="w-full flex items-center justify-between gap-1 px-3 py-2.5 hover:bg-ink-100 transition-colors"
+                >
+                  <span className="truncate">Бюджет</span>
+                  <SortIcon dir={isSorted({ type: 'budget' })} />
+                </button>
+                <ColumnResizer
+                  onDrag={(w) => handleDrag('budget', w)}
+                  onCommit={(w) => handleCommit('budget', w)}
+                  onAutoFit={() => autoFit('budget')}
+                />
+              </th>
+              <th
                 style={{ width: widths.touch, minWidth: widths.touch }}
                 className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
               >
@@ -364,7 +394,7 @@ export function Table({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={fields.length + 7} className="py-16 text-center">
+                <td colSpan={fields.length + 8} className="py-16 text-center">
                   <div className="text-sm text-ink-400">
                     {contacts.length === 0
                       ? 'Пока нет клиентов. Нажмите «Новый клиент», чтобы создать первого.'
@@ -383,7 +413,10 @@ export function Table({
                   widthName={widths.name}
                   widthPhones={widths.phones}
                   widthLocation={widths.location}
+                  widthBudget={widths.budget}
                   widthTouch={widths.touch}
+                  budgetThresholds={budgetThresholds}
+                  budgetColorEnabled={budgetColorEnabled}
                   widthForField={widths.forField}
                   onOpenContact={onOpenContact}
                   onOpenStatusManager={onOpenStatusManager}
@@ -396,7 +429,7 @@ export function Table({
               ))
             )}
             <tr>
-              <td colSpan={fields.length + 7} className="border-b border-ink-200">
+              <td colSpan={fields.length + 8} className="border-b border-ink-200">
                 <button
                   type="button"
                   onClick={addRow}
@@ -547,12 +580,13 @@ function SortableHeader({
 const PHOTO_W = 44;
 
 function Row({
-  contact, fields, statuses, widthStatus, widthName, widthPhones, widthLocation, widthTouch,
+  contact, fields, statuses, widthStatus, widthName, widthPhones, widthLocation, widthBudget, widthTouch,
   widthForField, onOpenContact, onOpenStatusManager, selected, onToggleSelect,
-  anySelected, avatarEnabled, touchThresholds,
+  anySelected, avatarEnabled, touchThresholds, budgetThresholds, budgetColorEnabled,
 }: {
   contact: Contact; fields: FieldDef[]; statuses: Status[];
-  widthStatus: number; widthName: number; widthPhones: number; widthLocation: number; widthTouch: number;
+  widthStatus: number; widthName: number; widthPhones: number; widthLocation: number; widthBudget: number; widthTouch: number;
+  budgetThresholds: BudgetThreshold[]; budgetColorEnabled: boolean;
   widthForField: (id: string) => number; onOpenContact: (id: string) => void;
   onOpenStatusManager: () => void; selected: boolean; onToggleSelect: () => void;
   anySelected: boolean; avatarEnabled: boolean; touchThresholds: TouchThreshold[];
@@ -706,6 +740,12 @@ function Row({
         />
       </td>
       <td
+        style={{ width: widthBudget, maxWidth: widthBudget }}
+        className="border-b border-ink-200 px-3 py-1.5"
+      >
+        <BudgetCell contact={contact} thresholds={budgetThresholds} colorEnabled={budgetColorEnabled} />
+      </td>
+      <td
         style={{ width: widthTouch, maxWidth: widthTouch }}
         className="border-b border-ink-200 px-3 py-1.5"
       >
@@ -731,6 +771,63 @@ function Row({
       })}
       <td className="border-b border-ink-200" />
     </tr>
+  );
+}
+
+function BudgetCell({
+  contact,
+  thresholds,
+  colorEnabled,
+}: {
+  contact: Contact;
+  thresholds: BudgetThreshold[];
+  colorEnabled: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const budget = contact.budget ?? 0;
+
+  const sorted = [...thresholds].sort((a, b) => a.amount - b.amount);
+  let color: string | undefined;
+  if (colorEnabled && budget > 0) {
+    color = sorted.length > 0 ? sorted[sorted.length - 1].color : '#22c55e';
+    for (const t of sorted) {
+      if (budget <= t.amount) { color = t.color; break; }
+    }
+  }
+
+  function commit() {
+    setEditing(false);
+    updateContact(contact.id, { budget: parseInt(draft.replace(/\D/g, '')) || 0 });
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.replace(/\D/g, ''))}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') commit(); }}
+        className="w-full text-sm bg-transparent focus:outline-none tabular-nums"
+        style={{ color }}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => { setEditing(true); setDraft(budget > 0 ? String(budget) : ''); }}
+      className="w-full text-left text-sm tabular-nums"
+    >
+      {budget > 0
+        ? <span style={{ color }}>{formatBudget(budget)}</span>
+        : <span className="text-ink-300">—</span>
+      }
+    </button>
   );
 }
 

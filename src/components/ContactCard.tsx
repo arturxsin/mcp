@@ -13,7 +13,7 @@ import {
   updateField,
 } from '../db';
 import type { CompanyEntry, Contact, FieldDef, Status } from '../types';
-import { FIELD_TYPE_OPTIONS, encodeLinkValue, inputTypeFor, parseLinkValue, placeholderFor } from '../utils';
+import { FIELD_TYPE_OPTIONS, encodeLinkValue, formatBudget, inputTypeFor, parseLinkValue, placeholderFor } from '../utils';
 import {
   DndContext,
   closestCenter,
@@ -328,6 +328,12 @@ export function ContactCard({
             <AddButton onClick={addCompany} label="Добавить компанию" />
           </div>
 
+          {/* Бюджет */}
+          <div className="px-4 py-3 border-t border-ink-100">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1.5">Бюджет</div>
+            <BudgetInput value={contact.budget ?? 0} contactId={contact.id} />
+          </div>
+
           {/* Локация */}
           <div className="px-4 py-3 border-t border-ink-100">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1.5">Локация</div>
@@ -482,6 +488,26 @@ export function ContactCard({
         </button>
       </div>
     </Modal>
+  );
+}
+
+function BudgetInput({ value, contactId }: { value: number; contactId: string }) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState('');
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={focused ? draft : (value > 0 ? formatBudget(value) : '')}
+      onFocus={() => { setFocused(true); setDraft(value > 0 ? String(value) : ''); }}
+      onChange={(e) => setDraft(e.target.value.replace(/\D/g, ''))}
+      onBlur={() => {
+        setFocused(false);
+        updateContact(contactId, { budget: parseInt(draft) || 0 });
+      }}
+      placeholder="0"
+      className="w-full text-sm bg-transparent focus:outline-none placeholder:text-ink-300 border-b border-transparent focus:border-ink-300 pb-0.5 tabular-nums transition-colors"
+    />
   );
 }
 

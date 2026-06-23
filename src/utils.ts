@@ -96,6 +96,11 @@ export function looksLikeUrl(s: string): boolean {
   return /^https?:\/\/\S+/.test(s.trim());
 }
 
+export function formatBudget(n: number): string {
+  if (!n) return '';
+  return new Intl.NumberFormat('ru-RU').format(Math.round(n));
+}
+
 export function formatPhone(v: string): string {
   const d = v.replace(/\D/g, '');
   if (d.length === 11) {

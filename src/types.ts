@@ -37,7 +37,7 @@ export interface Contact {
   nameSubItems?: NameSubItem[]; // legacy
   phones?: string[];
   companies?: CompanyEntry[];
-  crmUrl?: string;
+  nameUrl?: string;
   photo?: string; // data URL or external URL
   createdAt: number;
   updatedAt: number;

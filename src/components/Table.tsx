@@ -574,7 +574,7 @@ function Row({
   const [pickerOpen, setPickerOpen] = useState(false);
   const phones = (contact.phones ?? []).filter((p) => p.trim());
   const companies = (contact.companies ?? []).filter((c) => c.name.trim() || c.url.trim());
-  const crmUrl = contact.crmUrl?.trim() ?? '';
+  const nameUrl = contact.nameUrl?.trim() ?? '';
   const bg = selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50';
 
   return (
@@ -628,13 +628,27 @@ function Row({
         <div style={{ paddingLeft: avatarEnabled ? PHOTO_W + 6 : 6, paddingRight: 6, paddingTop: 5, paddingBottom: 5 }}>
           <div className="flex items-center gap-1 min-w-0">
             <div className="flex-1 min-w-0">
-              <InlineCell
-                value={contact.name}
-                type="text"
-                onCommit={(v) => updateContact(contact.id, { name: v })}
-                placeholder="Без имени"
-                className="font-medium"
-              />
+              {nameUrl ? (
+                <div className="min-h-[28px] px-2 py-1 text-sm font-medium">
+                  <a
+                    href={nameUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                  >
+                    {contact.name || 'Без имени'}
+                  </a>
+                </div>
+              ) : (
+                <InlineCell
+                  value={contact.name}
+                  type="text"
+                  onCommit={(v) => updateContact(contact.id, { name: v })}
+                  placeholder="Без имени"
+                  className="font-medium"
+                />
+              )}
             </div>
             <button
               type="button"
@@ -645,8 +659,8 @@ function Row({
               ↗
             </button>
           </div>
-          {/* Companies + CRM — compact, leading-none */}
-          {(companies.length > 0 || !!crmUrl) && (
+          {/* Companies — compact */}
+          {companies.length > 0 && (
             <div className="mt-0.5 pl-2 leading-[1.35]">
               {companies.map((c) => (
                 <div key={c.id} className="text-xs truncate">
@@ -660,14 +674,6 @@ function Row({
                   )}
                 </div>
               ))}
-              {crmUrl && (
-                <div className="text-xs">
-                  <a href={crmUrl} target="_blank" rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-indigo-400 hover:text-indigo-600 hover:underline"
-                  >CRM ↗</a>
-                </div>
-              )}
             </div>
           )}
         </div>

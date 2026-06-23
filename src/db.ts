@@ -168,7 +168,7 @@ export async function createContact(boardId: string, name = '', statusId?: strin
     values: {},
     phones: [],
     companies: [],
-    crmUrl: '',
+    nameUrl: '',
     createdAt: now,
     updatedAt: now,
   });

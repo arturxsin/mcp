@@ -77,7 +77,7 @@ export function ContactCard({
         Object.values(contact.values).every((v) => !v?.trim()) &&
         !phones.some((p) => p.trim()) &&
         !companies.some((c) => c.name.trim() || c.url.trim()) &&
-        !contact.crmUrl?.trim();
+        !contact.nameUrl?.trim();
       if (isEmpty) {
         await deleteContact(contact.id);
       }
@@ -163,7 +163,7 @@ export function ContactCard({
   const currentStatus = statuses.find((s) => s.id === contact.statusId) ?? null;
   const phones = contact.phones ?? [];
   const companies = contact.companies ?? [];
-  const crmUrl = contact.crmUrl ?? '';
+  const nameUrl = contact.nameUrl ?? '';
 
   return (
     <Modal open={open} onClose={handleClose} width={620}>
@@ -220,7 +220,7 @@ export function ContactCard({
         <div className="border border-ink-200 rounded-xl overflow-hidden">
 
           {/* Имя + статус */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-ink-100">
+          <div className="flex items-start gap-3 px-4 py-3 border-b border-ink-100">
             <div className="flex-1 min-w-0">
               <label className="block text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1">
                 Имя клиента
@@ -232,8 +232,25 @@ export function ContactCard({
                 placeholder="Введите имя клиента"
                 className="w-full text-[15px] font-medium bg-transparent focus:outline-none placeholder:text-ink-300"
               />
+              {/* Optional URL — makes name a hyperlink */}
+              <div className="flex items-center gap-1.5 mt-2">
+                <Link2 size={11} className="text-ink-300 shrink-0" />
+                <input
+                  type="url"
+                  value={nameUrl}
+                  onChange={(e) => updateContact(contact.id, { nameUrl: e.target.value })}
+                  placeholder="Ссылка (имя станет кликабельным)"
+                  className="flex-1 text-xs text-ink-500 bg-transparent focus:outline-none placeholder:text-ink-300 border-b border-transparent focus:border-ink-300"
+                />
+                {nameUrl && (
+                  <a href={nameUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-indigo-500 hover:underline shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >↗</a>
+                )}
+              </div>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 pt-5">
               <button
                 ref={setStatusAnchor}
                 type="button"
@@ -254,7 +271,7 @@ export function ContactCard({
           </div>
 
           {/* Компании */}
-          <div className="px-4 py-3 border-b border-ink-100 space-y-2">
+          <div className="px-4 py-3 space-y-2">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Компании</div>
             {companies.map((c) => (
               <div key={c.id} className="flex items-center gap-2 group">
@@ -281,32 +298,6 @@ export function ContactCard({
               </div>
             ))}
             <AddButton onClick={addCompany} label="Добавить компанию" />
-          </div>
-
-          {/* CRM */}
-          <div className="px-4 py-3">
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-2">CRM</div>
-            <div className="flex items-center gap-2">
-              <Link2 size={14} className="text-ink-400 shrink-0" />
-              <input
-                type="url"
-                value={crmUrl}
-                onChange={(e) => updateContact(contact.id, { crmUrl: e.target.value })}
-                placeholder="https://crm.example.com/..."
-                className="flex-1 px-2 py-1 text-sm bg-ink-50 border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-              />
-              {crmUrl && (
-                <a
-                  href={crmUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-indigo-600 hover:text-indigo-800 shrink-0 hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Открыть ↗
-                </a>
-              )}
-            </div>
           </div>
         </div>
 

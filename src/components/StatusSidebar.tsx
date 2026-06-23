@@ -11,8 +11,9 @@ export function StatusSidebar({ statuses, contacts, active, onChange }: Props) {
   const countAll = contacts.length;
   const countMap = new Map<string, number>();
   for (const c of contacts) {
-    if (c.statusId) {
-      countMap.set(c.statusId, (countMap.get(c.statusId) ?? 0) + 1);
+    const ids = c.statusIds ?? (c.statusId ? [c.statusId] : []);
+    for (const id of ids) {
+      countMap.set(id, (countMap.get(id) ?? 0) + 1);
     }
   }
 

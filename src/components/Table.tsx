@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, ArrowUpDown, GripVertical, Settings2, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, Plus, ArrowUpDown, Clock, GripVertical, MessageSquare, Settings2, Trash2 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { StatusPicker } from './StatusPicker';
 import { InlineCell } from './InlineCell';
 import { ColumnResizer } from './ColumnResizer';
+import { Popover } from './Popover';
 import {
   DndContext,
   closestCenter,
@@ -21,9 +22,11 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { bulkDeleteContacts, createContact, reorderFields, setColumnWidth, updateContact } from '../db';
 import type { Board, Contact, FieldDef, Status } from '../types';
-import { formatPhone, looksLikeUrl } from '../utils';
+import type { TouchThreshold } from '../settings';
+import { formatPhone } from '../utils';
 
 const CHECKBOX_W = 36;
+const TOUCH_COL_W = 120;
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 type SortDir = 'asc' | 'desc';
@@ -33,13 +36,14 @@ const DEFAULT_WIDTHS = {
   status: 140,
   name: 220,
   phones: 160,
+  touch: TOUCH_COL_W,
   field: 180,
 };
 
 interface Props {
   contacts: Contact[];
-  fields: FieldDef[]; // visible only
-  allFields: FieldDef[]; // for reorder
+  fields: FieldDef[];
+  allFields: FieldDef[];
   statuses: Status[];
   board: Board | null;
   boardId: string;
@@ -49,6 +53,7 @@ interface Props {
   statusFilter: Set<string>;
   sidebarTab: string | null;
   avatarEnabled: boolean;
+  touchThresholds: TouchThreshold[];
 }
 
 export function Table({
@@ -64,6 +69,7 @@ export function Table({
   statusFilter,
   sidebarTab,
   avatarEnabled,
+  touchThresholds,
 }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [tempWidths, setTempWidths] = useState<Record<string, number>>({});
@@ -71,13 +77,13 @@ export function Table({
 
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses]);
 
-  // Resolved widths: temp (during drag) > persisted (board.columnWidths) > defaults
   const widths = useMemo(() => {
     const persisted = board?.columnWidths ?? {};
     return {
       status: tempWidths.status ?? persisted.status ?? DEFAULT_WIDTHS.status,
       name: tempWidths.name ?? persisted.name ?? DEFAULT_WIDTHS.name,
       phones: tempWidths.phones ?? persisted.phones ?? DEFAULT_WIDTHS.phones,
+      touch: tempWidths.touch ?? persisted.touch ?? DEFAULT_WIDTHS.touch,
       forField: (id: string) => tempWidths[id] ?? persisted[id] ?? DEFAULT_WIDTHS.field,
     };
   }, [board, tempWidths]);
@@ -85,11 +91,11 @@ export function Table({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return contacts.filter((c) => {
-      // Sidebar tab filter (single status)
+      const ids = c.statusIds ?? (c.statusId ? [c.statusId] : []);
       if (sidebarTab !== null) {
-        if (c.statusId !== sidebarTab) return false;
+        if (!ids.includes(sidebarTab)) return false;
       } else if (statusFilter.size > 0) {
-        if (!c.statusId || !statusFilter.has(c.statusId)) return false;
+        if (!ids.some((id) => statusFilter.has(id))) return false;
       }
       if (!q) return true;
       if (c.name.toLowerCase().includes(q)) return true;
@@ -106,8 +112,10 @@ export function Table({
     const get = (c: Contact): string | number => {
       if (sort.key.type === 'name') return c.name.toLowerCase();
       if (sort.key.type === 'status') {
-        if (!c.statusId) return Number.MAX_SAFE_INTEGER;
-        return statusMap.get(c.statusId)?.order ?? Number.MAX_SAFE_INTEGER;
+        const ids = c.statusIds ?? (c.statusId ? [c.statusId] : []);
+        if (!ids.length) return Number.MAX_SAFE_INTEGER;
+        const orders = ids.map((id) => statusMap.get(id)?.order ?? Number.MAX_SAFE_INTEGER);
+        return Math.min(...orders);
       }
       return (c.values[sort.key.fieldId] ?? '').toLowerCase();
     };
@@ -151,10 +159,7 @@ export function Table({
         newAll[i] = reorderedVisible[vi++];
       }
     }
-    await reorderFields(
-      boardId,
-      newAll.map((f) => f.id),
-    );
+    await reorderFields(boardId, newAll.map((f) => f.id));
   }
 
   async function addRow() {
@@ -199,10 +204,8 @@ export function Table({
   }
 
   function autoFit(key: 'status' | 'name' | string) {
-    // Measure widest displayed text for the column
     const samples: string[] = [];
     if (key === 'status') {
-      // header
       samples.push('Статус');
       for (const s of statuses) samples.push(s.name);
     } else if (key === 'name') {
@@ -219,10 +222,8 @@ export function Table({
         if (v) samples.push(v);
       }
     }
-    const font =
-      '500 13px -apple-system, BlinkMacSystemFont, Inter, Segoe UI, sans-serif';
+    const font = '500 13px -apple-system, BlinkMacSystemFont, Inter, Segoe UI, sans-serif';
     const w = measureMax(samples, font);
-    // Add padding: header has dragger+sort icon (~50px), cell has ~28px
     const extra = key === 'status' ? 70 : key === 'name' ? 70 : 60;
     const finalW = Math.max(70, Math.min(720, Math.ceil(w) + extra));
     handleCommit(key, finalW);
@@ -231,7 +232,8 @@ export function Table({
   const cols = fields.map((f) => f.id);
 
   const totalWidth =
-    CHECKBOX_W + widths.status + widths.name + widths.phones + fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
+    CHECKBOX_W + widths.status + widths.name + widths.phones + widths.touch +
+    fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
 
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -248,6 +250,7 @@ export function Table({
             <col style={{ width: widths.status }} />
             <col style={{ width: widths.name }} />
             <col style={{ width: widths.phones }} />
+            <col style={{ width: widths.touch }} />
             {fields.map((f) => (
               <col key={f.id} style={{ width: widths.forField(f.id) }} />
             ))}
@@ -255,7 +258,6 @@ export function Table({
           </colgroup>
           <thead className="sticky top-0 z-10 bg-ink-50">
             <tr>
-              {/* Select-all checkbox */}
               <th
                 style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
                 className="sticky z-[5] bg-ink-50 border-b border-ink-200 px-2"
@@ -298,6 +300,20 @@ export function Table({
                   onAutoFit={() => autoFit('phones')}
                 />
               </th>
+              <th
+                style={{ width: widths.touch, minWidth: widths.touch }}
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+              >
+                <div className="px-3 py-2.5 flex items-center gap-1.5">
+                  <Clock size={11} />
+                  Касание
+                </div>
+                <ColumnResizer
+                  onDrag={(w) => handleDrag('touch', w)}
+                  onCommit={(w) => handleCommit('touch', w)}
+                  onAutoFit={() => {}}
+                />
+              </th>
               <SortableContext items={cols} strategy={horizontalListSortingStrategy}>
                 {fields.map((f) => (
                   <SortableHeader
@@ -318,7 +334,7 @@ export function Table({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={fields.length + 5} className="py-16 text-center">
+                <td colSpan={fields.length + 6} className="py-16 text-center">
                   <div className="text-sm text-ink-400">
                     {contacts.length === 0
                       ? 'Пока нет клиентов. Нажмите «Новый клиент», чтобы создать первого.'
@@ -332,11 +348,11 @@ export function Table({
                   key={c.id}
                   contact={c}
                   fields={fields}
-                  status={c.statusId ? statusMap.get(c.statusId) ?? null : null}
                   statuses={statuses}
                   widthStatus={widths.status}
                   widthName={widths.name}
                   widthPhones={widths.phones}
+                  widthTouch={widths.touch}
                   widthForField={widths.forField}
                   onOpenContact={onOpenContact}
                   onOpenStatusManager={onOpenStatusManager}
@@ -344,11 +360,12 @@ export function Table({
                   onToggleSelect={() => toggleSelect(c.id)}
                   anySelected={selectedIds.size > 0}
                   avatarEnabled={avatarEnabled}
+                  touchThresholds={touchThresholds}
                 />
               ))
             )}
             <tr>
-              <td colSpan={fields.length + 5} className="border-b border-ink-200">
+              <td colSpan={fields.length + 6} className="border-b border-ink-200">
                 <button
                   type="button"
                   onClick={addRow}
@@ -362,7 +379,6 @@ export function Table({
         </table>
       </DndContext>
 
-      {/* Bulk action bar */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-ink-900 text-white rounded-xl px-4 py-2.5 shadow-2xl text-sm">
           <span className="text-ink-300">Выбрано: <span className="text-white font-medium">{selectedIds.size}</span></span>
@@ -399,23 +415,11 @@ function SortIcon({ dir }: { dir: SortDir | null }) {
 }
 
 function StatusHeader({
-  width,
-  left,
-  onSort,
-  sortDir,
-  onOpenStatusManager,
-  onDrag,
-  onCommit,
-  onAutoFit,
+  width, left, onSort, sortDir, onOpenStatusManager, onDrag, onCommit, onAutoFit,
 }: {
-  width: number;
-  left: number;
-  onSort: () => void;
-  sortDir: SortDir | null;
-  onOpenStatusManager: () => void;
-  onDrag: (w: number) => void;
-  onCommit: (w: number) => void;
-  onAutoFit: () => void;
+  width: number; left: number; onSort: () => void; sortDir: SortDir | null;
+  onOpenStatusManager: () => void; onDrag: (w: number) => void;
+  onCommit: (w: number) => void; onAutoFit: () => void;
 }) {
   return (
     <th
@@ -446,21 +450,10 @@ function StatusHeader({
 }
 
 function NameHeader({
-  width,
-  left,
-  onSort,
-  sortDir,
-  onDrag,
-  onCommit,
-  onAutoFit,
+  width, left, onSort, sortDir, onDrag, onCommit, onAutoFit,
 }: {
-  width: number;
-  left: number;
-  onSort: () => void;
-  sortDir: SortDir | null;
-  onDrag: (w: number) => void;
-  onCommit: (w: number) => void;
-  onAutoFit: () => void;
+  width: number; left: number; onSort: () => void; sortDir: SortDir | null;
+  onDrag: (w: number) => void; onCommit: (w: number) => void; onAutoFit: () => void;
 }) {
   return (
     <th
@@ -481,21 +474,10 @@ function NameHeader({
 }
 
 function SortableHeader({
-  field,
-  width,
-  onClick,
-  sortDir,
-  onDrag,
-  onCommit,
-  onAutoFit,
+  field, width, onClick, sortDir, onDrag, onCommit, onAutoFit,
 }: {
-  field: FieldDef;
-  width: number;
-  onClick: () => void;
-  sortDir: SortDir | null;
-  onDrag: (w: number) => void;
-  onCommit: (w: number) => void;
-  onAutoFit: () => void;
+  field: FieldDef; width: number; onClick: () => void; sortDir: SortDir | null;
+  onDrag: (w: number) => void; onCommit: (w: number) => void; onAutoFit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: field.id,
@@ -504,13 +486,7 @@ function SortableHeader({
   return (
     <th
       ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.6 : 1,
-        width,
-        minWidth: width,
-      }}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1, width, minWidth: width }}
       className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200 group"
     >
       <div className="flex items-center px-3 py-2.5 gap-1 hover:bg-ink-100 transition-colors">
@@ -540,35 +516,15 @@ function SortableHeader({
 const PHOTO_W = 44;
 
 function Row({
-  contact,
-  fields,
-  status,
-  statuses,
-  widthStatus,
-  widthName,
-  widthPhones,
-  widthForField,
-  onOpenContact,
-  onOpenStatusManager,
-  selected,
-  onToggleSelect,
-  anySelected,
-  avatarEnabled,
+  contact, fields, statuses, widthStatus, widthName, widthPhones, widthTouch,
+  widthForField, onOpenContact, onOpenStatusManager, selected, onToggleSelect,
+  anySelected, avatarEnabled, touchThresholds,
 }: {
-  contact: Contact;
-  fields: FieldDef[];
-  status: Status | null;
-  statuses: Status[];
-  widthStatus: number;
-  widthName: number;
-  widthPhones: number;
-  widthForField: (id: string) => number;
-  onOpenContact: (id: string) => void;
-  onOpenStatusManager: () => void;
-  selected: boolean;
-  onToggleSelect: () => void;
-  anySelected: boolean;
-  avatarEnabled: boolean;
+  contact: Contact; fields: FieldDef[]; statuses: Status[];
+  widthStatus: number; widthName: number; widthPhones: number; widthTouch: number;
+  widthForField: (id: string) => number; onOpenContact: (id: string) => void;
+  onOpenStatusManager: () => void; selected: boolean; onToggleSelect: () => void;
+  anySelected: boolean; avatarEnabled: boolean; touchThresholds: TouchThreshold[];
 }) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -576,10 +532,10 @@ function Row({
   const companies = (contact.companies ?? []).filter((c) => c.name.trim() || c.url.trim());
   const nameUrl = contact.nameUrl?.trim() ?? '';
   const bg = selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50';
+  const currentIds = contact.statusIds ?? (contact.statusId ? [contact.statusId] : []);
 
   return (
     <tr className={`group hover:bg-ink-50 transition-colors ${selected ? 'bg-indigo-50' : ''}`}>
-      {/* Checkbox */}
       <td
         style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
         className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 ${bg}`}
@@ -599,21 +555,36 @@ function Row({
           ref={setStatusAnchor}
           type="button"
           onClick={(e) => { e.stopPropagation(); setPickerOpen(true); }}
-          className="inline-block max-w-full"
+          className="flex flex-wrap gap-1 max-w-full"
         >
-          <StatusBadge status={status} size="sm" placeholder="—" />
+          {currentIds.length > 0
+            ? currentIds.map((sid) => (
+                <StatusBadge
+                  key={sid}
+                  status={statuses.find((x) => x.id === sid) ?? null}
+                  size="sm"
+                  placeholder=""
+                />
+              ))
+            : <StatusBadge status={null} size="sm" placeholder="—" />
+          }
         </button>
         <StatusPicker
           anchor={statusAnchor}
           open={pickerOpen}
           onClose={() => setPickerOpen(false)}
           statuses={statuses}
-          current={contact.statusId}
-          onPick={(id) => updateContact(contact.id, { statusId: id })}
+          currentIds={currentIds}
+          onToggle={(id) => {
+            const next = currentIds.includes(id)
+              ? currentIds.filter((x) => x !== id)
+              : [...currentIds, id];
+            updateContact(contact.id, { statusIds: next });
+          }}
           onManage={onOpenStatusManager}
         />
       </td>
-      {/* Name cell — sticky td acts as containing block; photo absolute-fills height */}
+      {/* Name cell — sticky td is containing block; photo absolute-fills height */}
       <td
         style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus, padding: 0 }}
         className={`sticky z-[4] transition-colors border-b border-ink-200 overflow-hidden ${bg}`}
@@ -659,7 +630,6 @@ function Row({
               ↗
             </button>
           </div>
-          {/* Companies — compact */}
           {companies.length > 0 && (
             <div className="mt-0.5 pl-2 leading-[1.35]">
               {companies.map((c) => (
@@ -678,7 +648,6 @@ function Row({
           )}
         </div>
       </td>
-      {/* Phones — separate column */}
       <td
         style={{ width: widthPhones, maxWidth: widthPhones }}
         className="border-b border-ink-200 px-3 py-1.5"
@@ -688,6 +657,12 @@ function Row({
             {formatPhone(p)}
           </div>
         ))}
+      </td>
+      <td
+        style={{ width: widthTouch, maxWidth: widthTouch }}
+        className="border-b border-ink-200 px-3 py-1.5"
+      >
+        <TouchCell contact={contact} thresholds={touchThresholds} />
       </td>
       {fields.map((f) => {
         const w = widthForField(f.id);
@@ -712,7 +687,87 @@ function Row({
   );
 }
 
-// Measure max text width via canvas
+function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: TouchThreshold[] }) {
+  const [commentAnchor, setCommentAnchor] = useState<HTMLElement | null>(null);
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [draft, setDraft] = useState(contact.lastTouchComment ?? '');
+
+  useEffect(() => {
+    if (!commentOpen) setDraft(contact.lastTouchComment ?? '');
+  }, [contact.lastTouchComment, commentOpen]);
+
+  const ts = contact.lastTouchedAt ?? 0;
+  const days = ts > 0 ? Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24)) : null;
+
+  const sortedT = [...thresholds].sort((a, b) => a.days - b.days);
+  let badgeColor = sortedT.length > 0 ? sortedT[sortedT.length - 1].color : '#ef4444';
+  if (days !== null) {
+    for (const t of sortedT) {
+      if (days <= t.days) { badgeColor = t.color; break; }
+    }
+  }
+
+  function saveComment() {
+    updateContact(contact.id, { lastTouchComment: draft });
+    setCommentOpen(false);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => updateContact(contact.id, { lastTouchedAt: Date.now() })}
+        title="Отметить касание"
+        className="p-0.5 text-ink-300 hover:text-indigo-500 transition-colors shrink-0"
+      >
+        <Clock size={13} />
+      </button>
+      {days !== null ? (
+        <span style={{ color: badgeColor }} className="text-sm font-medium tabular-nums whitespace-nowrap">
+          {days}д
+        </span>
+      ) : (
+        <span className="text-ink-300 text-sm">—</span>
+      )}
+      <button
+        ref={setCommentAnchor}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setCommentOpen((v) => !v); }}
+        title="Комментарий"
+        className="p-0.5 shrink-0"
+      >
+        <MessageSquare
+          size={12}
+          className={contact.lastTouchComment ? 'text-indigo-500' : 'text-ink-300 hover:text-ink-500'}
+        />
+      </button>
+      <Popover anchor={commentAnchor} open={commentOpen} onClose={saveComment} width={240}>
+        <div className="p-2.5">
+          <div className="text-[10px] uppercase tracking-wider font-medium text-ink-400 mb-1.5">Комментарий</div>
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') saveComment(); }}
+            placeholder="Добавьте комментарий..."
+            rows={3}
+            className="w-full text-sm border border-ink-200 rounded-md p-2 focus:outline-none focus:border-indigo-400 resize-none placeholder:text-ink-300"
+          />
+          <div className="flex justify-end mt-1.5">
+            <button
+              type="button"
+              onClick={saveComment}
+              className="px-2.5 py-1 text-xs font-medium bg-ink-900 text-white rounded hover:bg-ink-700 transition-colors"
+            >
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </Popover>
+    </div>
+  );
+}
+
 let measureCtx: CanvasRenderingContext2D | null = null;
 function measureMax(samples: string[], font: string): number {
   if (!measureCtx) {

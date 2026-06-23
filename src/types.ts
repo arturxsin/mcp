@@ -35,10 +35,13 @@ export interface Contact {
   statusId: string | null;
   values: Record<string, string>; // fieldId -> value
   nameSubItems?: NameSubItem[]; // legacy
+  statusIds?: string[];       // replaces statusId after v4 migration
   phones?: string[];
   companies?: CompanyEntry[];
   nameUrl?: string;
-  photo?: string; // data URL or external URL
+  lastTouchedAt?: number;     // ms timestamp; 0 = never
+  lastTouchComment?: string;
+  photo?: string;
   createdAt: number;
   updatedAt: number;
 }

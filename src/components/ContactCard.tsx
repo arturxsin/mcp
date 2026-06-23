@@ -160,7 +160,6 @@ export function ContactCard({
 
   if (!contact) return null;
 
-  const currentStatus = statuses.find((s) => s.id === contact.statusId) ?? null;
   const phones = contact.phones ?? [];
   const companies = contact.companies ?? [];
   const nameUrl = contact.nameUrl ?? '';
@@ -250,23 +249,45 @@ export function ContactCard({
                 )}
               </div>
             </div>
-            <div className="shrink-0 pt-5">
-              <button
-                ref={setStatusAnchor}
-                type="button"
-                onClick={() => setPickerOpen((v) => !v)}
-              >
-                <StatusBadge status={currentStatus} placeholder="Без статуса" />
-              </button>
-              <StatusPicker
-                anchor={statusAnchor}
-                open={pickerOpen}
-                onClose={() => setPickerOpen(false)}
-                statuses={statuses}
-                current={contact.statusId}
-                onPick={(id) => updateContact(contact.id, { statusId: id })}
-                onManage={onOpenStatusManager}
-              />
+            <div className="shrink-0 pt-4">
+              {(() => {
+                const ids = contact.statusIds ?? (contact.statusId ? [contact.statusId] : []);
+                return (
+                  <>
+                    <button
+                      ref={setStatusAnchor}
+                      type="button"
+                      onClick={() => setPickerOpen((v) => !v)}
+                      className="flex flex-wrap gap-1 max-w-[160px]"
+                    >
+                      {ids.length > 0
+                        ? ids.map((sid) => (
+                            <StatusBadge
+                              key={sid}
+                              status={statuses.find((x) => x.id === sid) ?? null}
+                              placeholder=""
+                            />
+                          ))
+                        : <StatusBadge status={null} placeholder="Без статуса" />
+                      }
+                    </button>
+                    <StatusPicker
+                      anchor={statusAnchor}
+                      open={pickerOpen}
+                      onClose={() => setPickerOpen(false)}
+                      statuses={statuses}
+                      currentIds={ids}
+                      onToggle={(id) => {
+                        const next = ids.includes(id)
+                          ? ids.filter((x) => x !== id)
+                          : [...ids, id];
+                        updateContact(contact.id, { statusIds: next });
+                      }}
+                      onManage={onOpenStatusManager}
+                    />
+                  </>
+                );
+              })()}
             </div>
           </div>
 

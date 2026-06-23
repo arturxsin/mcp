@@ -59,6 +59,26 @@ class CrmDB extends Dexie {
           await seedSoldDefaultsInTx(tx, b.id);
         }
       });
+    this.version(4)
+      .stores({
+        boards: 'id, order',
+        statuses: 'id, boardId, order',
+        fields: 'id, boardId, order',
+        contacts: 'id, boardId, createdAt, updatedAt',
+        meta: 'key',
+        sold: 'id, boardId, contactId, order, createdAt',
+        soldFields: 'id, boardId, order',
+        soldTemplates: 'id, boardId, order',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('contacts').toCollection().modify((c: any) => {
+          if (!c.statusIds) {
+            c.statusIds = c.statusId ? [c.statusId] : [];
+          }
+          if (c.lastTouchedAt === undefined) c.lastTouchedAt = 0;
+          if (c.lastTouchComment === undefined) c.lastTouchComment = '';
+        });
+      });
   }
 }
 
@@ -166,9 +186,12 @@ export async function createContact(boardId: string, name = '', statusId?: strin
     name,
     statusId: resolvedStatusId,
     values: {},
+    statusIds: [resolvedStatusId].filter(Boolean) as string[],
     phones: [],
     companies: [],
     nameUrl: '',
+    lastTouchedAt: 0,
+    lastTouchComment: '',
     createdAt: now,
     updatedAt: now,
   });

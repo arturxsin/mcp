@@ -217,6 +217,7 @@ export default function App() {
               statusFilter={statusFilter}
               sidebarTab={sidebarTab}
               avatarEnabled={settings.avatarEnabled}
+              touchThresholds={settings.touchThresholds}
             />
 
             <ColumnPicker

@@ -22,6 +22,11 @@ export interface NameSubItem {
   value: string;
 }
 
+export interface TouchHistoryEntry {
+  touchedAt: number;
+  comment: string;
+}
+
 export interface CompanyEntry {
   id: string;
   name: string;
@@ -43,6 +48,7 @@ export interface Contact {
   lastTouchComment?: string;
   location?: string;
   budget?: number;
+  touchHistory?: TouchHistoryEntry[];
   photo?: string;
   createdAt: number;
   updatedAt: number;

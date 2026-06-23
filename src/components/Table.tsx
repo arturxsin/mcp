@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, ArrowUpDown, Clock, GripVertical, MessageSquare, Settings2, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, ArrowUpDown, Clock, GripVertical, History, MessageSquare, Settings2, Trash2 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { StatusPicker } from './StatusPicker';
 import { InlineCell } from './InlineCell';
@@ -831,9 +831,19 @@ function BudgetCell({
   );
 }
 
+function formatTouchDate(ts: number): string {
+  const d = new Date(ts);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}.${month}.${year}`;
+}
+
 function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: TouchThreshold[] }) {
   const [commentAnchor, setCommentAnchor] = useState<HTMLElement | null>(null);
   const [commentOpen, setCommentOpen] = useState(false);
+  const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [draft, setDraft] = useState(contact.lastTouchComment ?? '');
 
   useEffect(() => {
@@ -851,16 +861,31 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
     }
   }
 
+  function recordTouch() {
+    const history = contact.touchHistory ?? [];
+    const prevTs = contact.lastTouchedAt ?? 0;
+    const updates: Partial<Contact> = { lastTouchedAt: Date.now(), lastTouchComment: '' };
+    if (prevTs > 0) {
+      updates.touchHistory = [
+        { touchedAt: prevTs, comment: contact.lastTouchComment ?? '' },
+        ...history,
+      ];
+    }
+    updateContact(contact.id, updates);
+  }
+
   function saveComment() {
     updateContact(contact.id, { lastTouchComment: draft });
     setCommentOpen(false);
   }
 
+  const history = contact.touchHistory ?? [];
+
   return (
     <div className="flex items-center gap-1.5">
       <button
         type="button"
-        onClick={() => updateContact(contact.id, { lastTouchedAt: Date.now() })}
+        onClick={recordTouch}
         title="Отметить касание"
         className="p-0.5 transition-colors shrink-0"
         style={{ color: days !== null ? badgeColor : '#9ca3af' }}
@@ -886,6 +911,18 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
           className={contact.lastTouchComment ? 'text-indigo-500' : 'text-ink-300 hover:text-ink-500'}
         />
       </button>
+      <button
+        ref={setHistoryAnchor}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setHistoryOpen((v) => !v); }}
+        title="История касаний"
+        className="p-0.5 shrink-0"
+      >
+        <History
+          size={12}
+          className={history.length > 0 ? 'text-ink-400 hover:text-ink-700' : 'text-ink-200 hover:text-ink-400'}
+        />
+      </button>
       <Popover anchor={commentAnchor} open={commentOpen} onClose={saveComment} width={240}>
         <div className="p-2.5">
           <div className="text-[10px] uppercase tracking-wider font-medium text-ink-400 mb-1.5">Комментарий</div>
@@ -907,6 +944,27 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
               Сохранить
             </button>
           </div>
+        </div>
+      </Popover>
+      <Popover anchor={historyAnchor} open={historyOpen} onClose={() => setHistoryOpen(false)} width={280}>
+        <div className="p-2.5">
+          <div className="text-[10px] uppercase tracking-wider font-medium text-ink-400 mb-2">История касаний</div>
+          {history.length === 0 ? (
+            <div className="text-sm text-ink-300 py-1">Нет записей</div>
+          ) : (
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-0.5">
+              {history.map((entry, i) => (
+                <div key={i}>
+                  <div className="text-[11px] font-semibold text-ink-500">{formatTouchDate(entry.touchedAt)}</div>
+                  {entry.comment ? (
+                    <div className="text-sm text-ink-700 mt-0.5 whitespace-pre-wrap">{entry.comment}</div>
+                  ) : (
+                    <div className="text-sm text-ink-300 mt-0.5">—</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Popover>
     </div>

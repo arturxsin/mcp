@@ -355,25 +355,65 @@ export function ContactCard({
 
         {/* Телефоны */}
         <SectionBlock label="Телефоны">
-          {phones.map((p, idx) => (
-            <div key={idx} className="flex items-center gap-2 group">
-              <input
-                type="tel"
-                value={p}
-                onChange={(e) => updatePhone(idx, e.target.value)}
-                placeholder="+7 999 123-45-67"
-                className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-              />
-              <button
-                type="button"
-                onClick={() => removePhone(idx)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
+          {phones.map((p, idx) => {
+            const digits = p.replace(/\D/g, '');
+            return (
+              <div key={idx} className="flex items-center gap-2 group">
+                <input
+                  type="tel"
+                  value={p}
+                  onChange={(e) => updatePhone(idx, e.target.value)}
+                  placeholder="+7 999 123-45-67"
+                  className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+                />
+                {digits.length >= 7 && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] font-bold text-green-600 hover:text-green-700 px-1 py-0.5 rounded hover:bg-green-50 transition-colors"
+                      title="WhatsApp"
+                    >WA</a>
+                    <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1 py-0.5 rounded hover:bg-sky-50 transition-colors"
+                      title="Telegram"
+                    >TG</a>
+                  </div>
+                )}
+                <button type="button" onClick={() => removePhone(idx)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            );
+          })}
           <AddButton onClick={addPhone} label="Добавить номер" />
+        </SectionBlock>
+
+        {/* Telegram username */}
+        <SectionBlock label="Telegram">
+          {(() => {
+            const tgVal = contact.tgUsername ?? '';
+            const tgClean = tgVal.replace(/^@/, '');
+            return (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={tgVal}
+                  onChange={(e) => updateContact(contact.id, { tgUsername: e.target.value })}
+                  placeholder="@username"
+                  className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+                />
+                {tgClean && (
+                  <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1.5 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
+                  >TG ↗</a>
+                )}
+              </div>
+            );
+          })()}
         </SectionBlock>
 
         {/* Custom fields */}

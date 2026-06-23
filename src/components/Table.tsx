@@ -722,11 +722,43 @@ function Row({
         style={{ width: widthPhones, maxWidth: widthPhones }}
         className="border-b border-ink-200 px-3 py-1.5"
       >
-        {phones.map((p, i) => (
-          <div key={i} className="text-sm text-ink-700 truncate">
-            {formatPhone(p)}
-          </div>
-        ))}
+        {phones.map((p, i) => {
+          const digits = p.replace(/\D/g, '');
+          return (
+            <div key={i} className="flex items-center gap-1 min-w-0">
+              <span className="text-sm text-ink-700 truncate flex-1">{formatPhone(p)}</span>
+              {digits.length >= 7 && (
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[9px] font-bold text-green-600 hover:text-green-700 px-0.5 leading-none"
+                    title="WhatsApp"
+                  >WA</a>
+                  <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[9px] font-bold text-sky-500 hover:text-sky-600 px-0.5 leading-none"
+                    title="Telegram"
+                  >TG</a>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {(() => {
+          const tgVal = contact.tgUsername ?? '';
+          const tgClean = tgVal.replace(/^@/, '');
+          if (!tgClean) return null;
+          const display = tgVal.startsWith('@') ? tgVal : `@${tgVal}`;
+          return (
+            <div className="flex items-center gap-1 min-w-0 mt-0.5">
+              <span className="text-xs text-sky-500 truncate flex-1">{display}</span>
+              <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-bold text-sky-500 hover:text-sky-600 shrink-0"
+              >TG ↗</a>
+            </div>
+          );
+        })()}
       </td>
       <td
         style={{ width: widthLocation, maxWidth: widthLocation }}

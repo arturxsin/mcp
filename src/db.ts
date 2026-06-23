@@ -193,6 +193,7 @@ export async function createContact(boardId: string, name = '', statusId?: strin
     lastTouchedAt: 0,
     lastTouchComment: '',
     touchHistory: [],
+    tgUsername: '',
     location: '',
     budget: 0,
     createdAt: now,

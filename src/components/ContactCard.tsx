@@ -216,41 +216,101 @@ export function ContactCard({
           </div>
         )}
 
-        {/* Name + Status */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <label className="block text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1">
-              Имя клиента
-            </label>
-            <input
-              autoFocus
-              value={contact.name}
-              onChange={(e) => updateContact(contact.id, { name: e.target.value })}
-              placeholder="Введите имя клиента"
-              className="w-full px-3 py-2 text-[15px] font-medium bg-white border border-ink-200 rounded-lg focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-            />
+        {/* ── Главный блок: Имя + Компании + CRM ──────────────────── */}
+        <div className="border border-ink-200 rounded-xl overflow-hidden">
+
+          {/* Имя + статус */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-ink-100">
+            <div className="flex-1 min-w-0">
+              <label className="block text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1">
+                Имя клиента
+              </label>
+              <input
+                autoFocus
+                value={contact.name}
+                onChange={(e) => updateContact(contact.id, { name: e.target.value })}
+                placeholder="Введите имя клиента"
+                className="w-full text-[15px] font-medium bg-transparent focus:outline-none placeholder:text-ink-300"
+              />
+            </div>
+            <div className="shrink-0">
+              <button
+                ref={setStatusAnchor}
+                type="button"
+                onClick={() => setPickerOpen((v) => !v)}
+              >
+                <StatusBadge status={currentStatus} placeholder="Без статуса" />
+              </button>
+              <StatusPicker
+                anchor={statusAnchor}
+                open={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                statuses={statuses}
+                current={contact.statusId}
+                onPick={(id) => updateContact(contact.id, { statusId: id })}
+                onManage={onOpenStatusManager}
+              />
+            </div>
           </div>
-          <div className="shrink-0 mt-5">
-            <button
-              ref={setStatusAnchor}
-              type="button"
-              onClick={() => setPickerOpen((v) => !v)}
-            >
-              <StatusBadge status={currentStatus} placeholder="Без статуса" />
-            </button>
-            <StatusPicker
-              anchor={statusAnchor}
-              open={pickerOpen}
-              onClose={() => setPickerOpen(false)}
-              statuses={statuses}
-              current={contact.statusId}
-              onPick={(id) => updateContact(contact.id, { statusId: id })}
-              onManage={onOpenStatusManager}
-            />
+
+          {/* Компании */}
+          <div className="px-4 py-3 border-b border-ink-100 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Компании</div>
+            {companies.map((c) => (
+              <div key={c.id} className="flex items-center gap-2 group">
+                <input
+                  value={c.name}
+                  onChange={(e) => updateCompany(c.id, { name: e.target.value })}
+                  placeholder="Название компании"
+                  className="flex-1 px-2 py-1 text-sm bg-ink-50 border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+                />
+                <input
+                  type="url"
+                  value={c.url}
+                  onChange={(e) => updateCompany(c.id, { url: e.target.value })}
+                  placeholder="https://..."
+                  className="flex-1 px-2 py-1 text-sm bg-ink-50 border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeCompany(c.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <AddButton onClick={addCompany} label="Добавить компанию" />
+          </div>
+
+          {/* CRM */}
+          <div className="px-4 py-3">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-2">CRM</div>
+            <div className="flex items-center gap-2">
+              <Link2 size={14} className="text-ink-400 shrink-0" />
+              <input
+                type="url"
+                value={crmUrl}
+                onChange={(e) => updateContact(contact.id, { crmUrl: e.target.value })}
+                placeholder="https://crm.example.com/..."
+                className="flex-1 px-2 py-1 text-sm bg-ink-50 border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+              />
+              {crmUrl && (
+                <a
+                  href={crmUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-indigo-600 hover:text-indigo-800 shrink-0 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Открыть ↗
+                </a>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Phones */}
+        {/* Телефоны */}
         <SectionBlock label="Телефоны">
           {phones.map((p, idx) => (
             <div key={idx} className="flex items-center gap-2 group">
@@ -271,60 +331,6 @@ export function ContactCard({
             </div>
           ))}
           <AddButton onClick={addPhone} label="Добавить номер" />
-        </SectionBlock>
-
-        {/* Companies */}
-        <SectionBlock label="Компании">
-          {companies.map((c) => (
-            <div key={c.id} className="flex items-center gap-2 group">
-              <input
-                value={c.name}
-                onChange={(e) => updateCompany(c.id, { name: e.target.value })}
-                placeholder="Название компании"
-                className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-              />
-              <input
-                type="url"
-                value={c.url}
-                onChange={(e) => updateCompany(c.id, { url: e.target.value })}
-                placeholder="https://..."
-                className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-              />
-              <button
-                type="button"
-                onClick={() => removeCompany(c.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded shrink-0"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
-          <AddButton onClick={addCompany} label="Добавить компанию" />
-        </SectionBlock>
-
-        {/* CRM */}
-        <SectionBlock label="CRM">
-          <div className="flex items-center gap-2">
-            <Link2 size={14} className="text-ink-400 shrink-0" />
-            <input
-              type="url"
-              value={crmUrl}
-              onChange={(e) => updateContact(contact.id, { crmUrl: e.target.value })}
-              placeholder="https://crm.example.com/..."
-              className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-            />
-            {crmUrl && (
-              <a
-                href={crmUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-indigo-600 hover:text-indigo-800 shrink-0 hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Открыть ↗
-              </a>
-            )}
-          </div>
         </SectionBlock>
 
         {/* Custom fields */}

@@ -625,7 +625,7 @@ function Row({
             style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: PHOTO_W, height: '100%', objectFit: 'cover', display: 'block' }}
           />
         )}
-        <div style={{ paddingLeft: avatarEnabled ? PHOTO_W + 8 : 8, paddingRight: 8, paddingTop: 6, paddingBottom: 6 }}>
+        <div style={{ paddingLeft: avatarEnabled ? PHOTO_W + 6 : 6, paddingRight: 6, paddingTop: 5, paddingBottom: 5 }}>
           <div className="flex items-center gap-1 min-w-0">
             <div className="flex-1 min-w-0">
               <InlineCell
@@ -645,36 +645,29 @@ function Row({
               ↗
             </button>
           </div>
-          {/* Companies */}
-          {companies.map((c) => (
-            <div key={c.id} className="text-xs truncate mt-0.5 pl-2">
-              {c.url ? (
-                <a
-                  href={c.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-ink-500 hover:text-ink-900 hover:underline"
-                >
-                  {c.name || c.url}
-                </a>
-              ) : (
-                <span className="text-ink-400">{c.name}</span>
+          {/* Companies + CRM — compact, leading-none */}
+          {(companies.length > 0 || !!crmUrl) && (
+            <div className="mt-0.5 pl-2 leading-[1.35]">
+              {companies.map((c) => (
+                <div key={c.id} className="text-xs truncate">
+                  {c.url ? (
+                    <a href={c.url} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-ink-500 hover:text-ink-900 hover:underline"
+                    >{c.name || c.url}</a>
+                  ) : (
+                    <span className="text-ink-400">{c.name}</span>
+                  )}
+                </div>
+              ))}
+              {crmUrl && (
+                <div className="text-xs">
+                  <a href={crmUrl} target="_blank" rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-indigo-400 hover:text-indigo-600 hover:underline"
+                  >CRM ↗</a>
+                </div>
               )}
-            </div>
-          ))}
-          {/* CRM */}
-          {crmUrl && (
-            <div className="mt-0.5 pl-2">
-              <a
-                href={crmUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs text-indigo-400 hover:text-indigo-600 hover:underline"
-              >
-                CRM ↗
-              </a>
             </div>
           )}
         </div>
@@ -682,7 +675,7 @@ function Row({
       {/* Phones — separate column */}
       <td
         style={{ width: widthPhones, maxWidth: widthPhones }}
-        className="border-b border-ink-200 px-3 py-1.5 align-top"
+        className="border-b border-ink-200 px-3 py-1.5"
       >
         {phones.map((p, i) => (
           <div key={i} className="text-sm text-ink-700 truncate">
@@ -696,7 +689,7 @@ function Row({
           <td
             key={f.id}
             style={{ width: w, maxWidth: w }}
-            className="border-b border-ink-200 px-2 py-1 align-top"
+            className="border-b border-ink-200 px-2 py-1"
           >
             <InlineCell
               value={contact.values[f.id] ?? ''}

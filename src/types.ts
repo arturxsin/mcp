@@ -41,6 +41,7 @@ export interface Contact {
   nameUrl?: string;
   lastTouchedAt?: number;     // ms timestamp; 0 = never
   lastTouchComment?: string;
+  location?: string;
   photo?: string;
   createdAt: number;
   updatedAt: number;

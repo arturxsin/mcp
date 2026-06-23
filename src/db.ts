@@ -192,6 +192,7 @@ export async function createContact(boardId: string, name = '', statusId?: strin
     nameUrl: '',
     lastTouchedAt: 0,
     lastTouchComment: '',
+    location: '',
     createdAt: now,
     updatedAt: now,
   });

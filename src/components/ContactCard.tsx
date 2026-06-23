@@ -39,6 +39,7 @@ interface Props {
   boardId: string;
   onOpenStatusManager: () => void;
   avatarEnabled?: boolean;
+  locations?: string[];
 }
 
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
@@ -52,6 +53,7 @@ export function ContactCard({
   boardId,
   onOpenStatusManager,
   avatarEnabled = false,
+  locations = [],
 }: Props) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -251,7 +253,12 @@ export function ContactCard({
             </div>
             <div className="shrink-0 pt-4">
               {(() => {
-                const ids = contact.statusIds ?? (contact.statusId ? [contact.statusId] : []);
+                const raw = contact.statusIds ?? (contact.statusId ? [contact.statusId] : []);
+                const ids = [...raw].sort((a, b) => {
+                  const oA = statuses.find((s) => s.id === a)?.order ?? 999;
+                  const oB = statuses.find((s) => s.id === b)?.order ?? 999;
+                  return oA - oB;
+                });
                 return (
                   <>
                     <button
@@ -319,6 +326,24 @@ export function ContactCard({
               </div>
             ))}
             <AddButton onClick={addCompany} label="Добавить компанию" />
+          </div>
+
+          {/* Локация */}
+          <div className="px-4 py-3 border-t border-ink-100">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1.5">Локация</div>
+            <input
+              type="text"
+              list={`loc-opts-${contact.id}`}
+              value={contact.location ?? ''}
+              onChange={(e) => updateContact(contact.id, { location: e.target.value })}
+              placeholder="Город или регион"
+              className="w-full text-sm bg-transparent focus:outline-none placeholder:text-ink-300 border-b border-transparent focus:border-ink-300 pb-0.5 transition-colors"
+            />
+            <datalist id={`loc-opts-${contact.id}`}>
+              {locations.filter(Boolean).map((loc) => (
+                <option key={loc} value={loc} />
+              ))}
+            </datalist>
           </div>
         </div>
 

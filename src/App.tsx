@@ -92,6 +92,14 @@ export default function App() {
   }, [currentBoardId]);
 
   const visibleFields = useMemo(() => allFields.filter((f) => f.visibleInTable), [allFields]);
+  const allLocations = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of contacts) {
+      const loc = (c.location ?? '').trim();
+      if (loc) set.add(loc);
+    }
+    return [...set].sort();
+  }, [contacts]);
   const openContact = useMemo(
     () => contacts.find((c) => c.id === openContactId) ?? null,
     [contacts, openContactId],
@@ -249,6 +257,7 @@ export default function App() {
         boardId={currentBoardId}
         onOpenStatusManager={() => setStatusMgrOpen(true)}
         avatarEnabled={settings.avatarEnabled}
+        locations={allLocations}
       />
 
       <SettingsModal

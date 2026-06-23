@@ -27,6 +27,7 @@ import { formatPhone } from '../utils';
 
 const CHECKBOX_W = 36;
 const TOUCH_COL_W = 120;
+const LOCATION_COL_W = 140;
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 type SortDir = 'asc' | 'desc';
@@ -37,6 +38,7 @@ const DEFAULT_WIDTHS = {
   name: 220,
   phones: 160,
   touch: TOUCH_COL_W,
+  location: LOCATION_COL_W,
   field: 180,
 };
 
@@ -84,6 +86,7 @@ export function Table({
       name: tempWidths.name ?? persisted.name ?? DEFAULT_WIDTHS.name,
       phones: tempWidths.phones ?? persisted.phones ?? DEFAULT_WIDTHS.phones,
       touch: tempWidths.touch ?? persisted.touch ?? DEFAULT_WIDTHS.touch,
+      location: tempWidths.location ?? persisted.location ?? DEFAULT_WIDTHS.location,
       forField: (id: string) => tempWidths[id] ?? persisted[id] ?? DEFAULT_WIDTHS.field,
     };
   }, [board, tempWidths]);
@@ -219,6 +222,9 @@ export function Table({
     } else if (key === 'phones') {
       samples.push('Телефоны');
       for (const c of sorted) for (const p of (c.phones ?? [])) if (p) samples.push(formatPhone(p));
+    } else if (key === 'location') {
+      samples.push('Локация');
+      for (const c of sorted) if (c.location) samples.push(c.location);
     } else {
       const f = fields.find((x) => x.id === key);
       if (f) samples.push(f.name);
@@ -237,7 +243,7 @@ export function Table({
   const cols = fields.map((f) => f.id);
 
   const totalWidth =
-    CHECKBOX_W + widths.status + widths.name + widths.phones + widths.touch +
+    CHECKBOX_W + widths.status + widths.name + widths.phones + widths.location + widths.touch +
     fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
 
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
@@ -255,6 +261,7 @@ export function Table({
             <col style={{ width: widths.status }} />
             <col style={{ width: widths.name }} />
             <col style={{ width: widths.phones }} />
+            <col style={{ width: widths.location }} />
             <col style={{ width: widths.touch }} />
             {fields.map((f) => (
               <col key={f.id} style={{ width: widths.forField(f.id) }} />
@@ -306,6 +313,17 @@ export function Table({
                 />
               </th>
               <th
+                style={{ width: widths.location, minWidth: widths.location }}
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+              >
+                <div className="px-3 py-2.5">Локация</div>
+                <ColumnResizer
+                  onDrag={(w) => handleDrag('location', w)}
+                  onCommit={(w) => handleCommit('location', w)}
+                  onAutoFit={() => autoFit('location')}
+                />
+              </th>
+              <th
                 style={{ width: widths.touch, minWidth: widths.touch }}
                 className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
               >
@@ -346,7 +364,7 @@ export function Table({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={fields.length + 6} className="py-16 text-center">
+                <td colSpan={fields.length + 7} className="py-16 text-center">
                   <div className="text-sm text-ink-400">
                     {contacts.length === 0
                       ? 'Пока нет клиентов. Нажмите «Новый клиент», чтобы создать первого.'
@@ -364,6 +382,7 @@ export function Table({
                   widthStatus={widths.status}
                   widthName={widths.name}
                   widthPhones={widths.phones}
+                  widthLocation={widths.location}
                   widthTouch={widths.touch}
                   widthForField={widths.forField}
                   onOpenContact={onOpenContact}
@@ -377,7 +396,7 @@ export function Table({
               ))
             )}
             <tr>
-              <td colSpan={fields.length + 6} className="border-b border-ink-200">
+              <td colSpan={fields.length + 7} className="border-b border-ink-200">
                 <button
                   type="button"
                   onClick={addRow}
@@ -528,12 +547,12 @@ function SortableHeader({
 const PHOTO_W = 44;
 
 function Row({
-  contact, fields, statuses, widthStatus, widthName, widthPhones, widthTouch,
+  contact, fields, statuses, widthStatus, widthName, widthPhones, widthLocation, widthTouch,
   widthForField, onOpenContact, onOpenStatusManager, selected, onToggleSelect,
   anySelected, avatarEnabled, touchThresholds,
 }: {
   contact: Contact; fields: FieldDef[]; statuses: Status[];
-  widthStatus: number; widthName: number; widthPhones: number; widthTouch: number;
+  widthStatus: number; widthName: number; widthPhones: number; widthLocation: number; widthTouch: number;
   widthForField: (id: string) => number; onOpenContact: (id: string) => void;
   onOpenStatusManager: () => void; selected: boolean; onToggleSelect: () => void;
   anySelected: boolean; avatarEnabled: boolean; touchThresholds: TouchThreshold[];
@@ -544,7 +563,12 @@ function Row({
   const companies = (contact.companies ?? []).filter((c) => c.name.trim() || c.url.trim());
   const nameUrl = contact.nameUrl?.trim() ?? '';
   const bg = selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50';
-  const currentIds = contact.statusIds ?? (contact.statusId ? [contact.statusId] : []);
+  const rawIds = contact.statusIds ?? (contact.statusId ? [contact.statusId] : []);
+  const currentIds = [...rawIds].sort((a, b) => {
+    const oA = statuses.find((s) => s.id === a)?.order ?? 999;
+    const oB = statuses.find((s) => s.id === b)?.order ?? 999;
+    return oA - oB;
+  });
 
   return (
     <tr className={`group hover:bg-ink-50 transition-colors ${selected ? 'bg-indigo-50' : ''}`}>
@@ -669,6 +693,17 @@ function Row({
             {formatPhone(p)}
           </div>
         ))}
+      </td>
+      <td
+        style={{ width: widthLocation, maxWidth: widthLocation }}
+        className="border-b border-ink-200 px-2 py-1"
+      >
+        <InlineCell
+          value={contact.location ?? ''}
+          type="text"
+          onCommit={(v) => updateContact(contact.id, { location: v })}
+          placeholder="Локация"
+        />
       </td>
       <td
         style={{ width: widthTouch, maxWidth: widthTouch }}

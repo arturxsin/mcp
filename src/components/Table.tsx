@@ -880,6 +880,11 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
   }
 
   const history = contact.touchHistory ?? [];
+  const currentTs = contact.lastTouchedAt ?? 0;
+  const displayHistory = [
+    ...(currentTs > 0 ? [{ touchedAt: currentTs, comment: contact.lastTouchComment ?? '' }] : []),
+    ...history,
+  ];
 
   return (
     <div className="flex items-center gap-1.5">
@@ -920,7 +925,7 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
       >
         <History
           size={12}
-          className={history.length > 0 ? 'text-ink-400 hover:text-ink-700' : 'text-ink-200 hover:text-ink-400'}
+          className={displayHistory.length > 0 ? 'text-ink-400 hover:text-ink-700' : 'text-ink-200 hover:text-ink-400'}
         />
       </button>
       <Popover anchor={commentAnchor} open={commentOpen} onClose={saveComment} width={240}>
@@ -949,11 +954,11 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
       <Popover anchor={historyAnchor} open={historyOpen} onClose={() => setHistoryOpen(false)} width={280}>
         <div className="p-2.5">
           <div className="text-[10px] uppercase tracking-wider font-medium text-ink-400 mb-2">История касаний</div>
-          {history.length === 0 ? (
+          {displayHistory.length === 0 ? (
             <div className="text-sm text-ink-300 py-1">Нет записей</div>
           ) : (
             <div className="space-y-3 max-h-60 overflow-y-auto pr-0.5">
-              {history.map((entry, i) => (
+              {displayHistory.map((entry, i) => (
                 <div key={i}>
                   <div className="text-[11px] font-semibold text-ink-500">{formatTouchDate(entry.touchedAt)}</div>
                   {entry.comment ? (

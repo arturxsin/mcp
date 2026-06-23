@@ -157,11 +157,9 @@ export async function deleteBoard(boardId: string) {
 export async function createContact(boardId: string, name = '', statusId?: string): Promise<string> {
   const id = nanoid();
   const now = Date.now();
-  const resolvedStatusId = statusId ?? await db.statuses
-    .where('boardId')
-    .equals(boardId)
-    .sortBy('order')
-    .then((arr) => arr[0]?.id ?? null);
+  const resolvedStatusId: string | null = statusId !== undefined
+    ? statusId
+    : await db.statuses.where('boardId').equals(boardId).sortBy('order').then((arr) => arr[0]?.id ?? null);
   await db.contacts.add({
     id,
     boardId,

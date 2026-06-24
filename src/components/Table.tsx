@@ -609,7 +609,7 @@ function Row({
   });
 
   return (
-    <tr className={`group transition-colors cursor-pointer ${selected ? 'bg-indigo-50' : rowBaseBg}`}>
+    <tr className={`group transition-colors ${selected ? 'bg-indigo-50' : rowBaseBg}`}>
       <td
         style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
         className={`sticky z-[4] transition-colors border-b-2 border-ink-200 px-2 ${bg}`}
@@ -730,7 +730,7 @@ function Row({
           const digits = p.value.replace(/\D/g, '');
           return (
             <div key={i} className="flex items-center gap-1 min-w-0">
-              <span className="text-sm text-ink-700 truncate flex-1">{formatPhone(p.value)}</span>
+              <span className="text-sm text-ink-700 truncate">{formatPhone(p.value)}</span>
               {(p.wa && digits.length >= 7) || (p.tg && (digits.length >= 7 || p.tgUsername)) ? (
                 <div className="flex items-center gap-0.5 shrink-0">
                   {p.wa && digits.length >= 7 && (

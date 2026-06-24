@@ -443,13 +443,12 @@ export function ContactCard({
                   {p.tg && (p.tgUsername || digits.length >= 7) && (() => {
                     const tgClean = (p.tgUsername ?? '').replace(/^@/, '');
                     const href = tgClean ? `https://t.me/${tgClean}` : `https://t.me/+${digits}`;
-                    const label = tgClean ? `@${tgClean}` : '↗';
                     return (
                       <a href={href} target="_blank" rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0 max-w-[80px] truncate"
-                        title="Telegram"
-                      >{label}</a>
+                        className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
+                        title={tgClean ? `@${tgClean}` : 'Telegram'}
+                      >↗</a>
                     );
                   })()}
                   <button type="button" onClick={() => removePhone(idx)}

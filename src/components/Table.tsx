@@ -756,21 +756,6 @@ function Row({
             </div>
           );
         })}
-        {phones.map((p, i) => {
-          const tgVal = p.tgUsername ?? '';
-          const tgClean = tgVal.replace(/^@/, '');
-          if (!tgClean) return null;
-          const display = tgVal.startsWith('@') ? tgVal : `@${tgVal}`;
-          return (
-            <div key={`tg-${i}`} className="flex items-center gap-1 min-w-0 mt-0.5">
-              <span className="text-xs text-sky-500 truncate flex-1">{display}</span>
-              <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-bold text-sky-500 hover:text-sky-600 shrink-0"
-              >TG ↗</a>
-            </div>
-          );
-        })}
       </td>
       <td
         style={{ width: widthLocation, maxWidth: widthLocation }}

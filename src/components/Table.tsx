@@ -732,14 +732,14 @@ function Row({
                   {p.wa && (
                     <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[9px] font-bold text-green-600 hover:text-green-700 px-0.5 leading-none"
+                      className="text-[9px] font-bold text-green-600 hover:text-green-700 inline-flex justify-center w-5 leading-none"
                       title="WhatsApp"
                     >WA</a>
                   )}
                   {p.tg && (
                     <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[9px] font-bold text-sky-500 hover:text-sky-600 px-0.5 leading-none"
+                      className="text-[9px] font-bold text-sky-500 hover:text-sky-600 inline-flex justify-center w-5 leading-none"
                       title="Telegram"
                     >TG</a>
                   )}

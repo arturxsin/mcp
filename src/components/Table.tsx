@@ -731,24 +731,28 @@ function Row({
           return (
             <div key={i} className="flex items-center gap-1 min-w-0">
               <span className="text-sm text-ink-700 truncate flex-1">{formatPhone(p.value)}</span>
-              {(p.wa || p.tg) && digits.length >= 7 && (
+              {(p.wa && digits.length >= 7) || (p.tg && (digits.length >= 7 || p.tgUsername)) ? (
                 <div className="flex items-center gap-0.5 shrink-0">
-                  {p.wa && (
+                  {p.wa && digits.length >= 7 && (
                     <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                       className="text-[9px] font-bold text-green-600 hover:text-green-700 inline-flex justify-center w-5 leading-none"
                       title="WhatsApp"
                     >WA</a>
                   )}
-                  {p.tg && (
-                    <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[9px] font-bold text-sky-500 hover:text-sky-600 inline-flex justify-center w-5 leading-none"
-                      title="Telegram"
-                    >TG</a>
-                  )}
+                  {p.tg && (digits.length >= 7 || p.tgUsername) && (() => {
+                    const tgClean = (p.tgUsername ?? '').replace(/^@/, '');
+                    const href = tgClean ? `https://t.me/${tgClean}` : `https://t.me/+${digits}`;
+                    return (
+                      <a href={href} target="_blank" rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[9px] font-bold text-sky-500 hover:text-sky-600 inline-flex justify-center w-5 leading-none"
+                        title={tgClean ? `@${tgClean}` : 'Telegram'}
+                      >TG</a>
+                    );
+                  })()}
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}

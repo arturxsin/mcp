@@ -153,6 +153,26 @@ export function ContactCard({
     });
   }
 
+  // --- Locations ---
+  async function addLocation() {
+    if (!contact) return;
+    await updateContact(contact.id, { locations: [...(contact.locations ?? []), ''] });
+  }
+
+  async function updateLocation(idx: number, value: string) {
+    if (!contact) return;
+    const next = [...(contact.locations ?? [])];
+    next[idx] = value;
+    await updateContact(contact.id, { locations: next });
+  }
+
+  async function removeLocation(idx: number) {
+    if (!contact) return;
+    await updateContact(contact.id, {
+      locations: (contact.locations ?? []).filter((_, i) => i !== idx),
+    });
+  }
+
   // --- Fields DnD ---
   async function onDragEnd(e: DragEndEvent) {
     const { active, over } = e;
@@ -350,21 +370,33 @@ export function ContactCard({
           </div>
 
           {/* Локация */}
-          <div className="px-4 py-3 border-t border-ink-100">
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-1.5">Локация</div>
-            <input
-              type="text"
-              list={`loc-opts-${contact.id}`}
-              value={contact.location ?? ''}
-              onChange={(e) => updateContact(contact.id, { location: e.target.value })}
-              placeholder="Город или регион"
-              className="w-full text-sm bg-transparent focus:outline-none placeholder:text-ink-300 border-b border-transparent focus:border-ink-300 pb-0.5 transition-colors"
-            />
+          <div className="px-4 py-3 border-t border-ink-100 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Локация</div>
             <datalist id={`loc-opts-${contact.id}`}>
               {locations.filter(Boolean).map((loc) => (
                 <option key={loc} value={loc} />
               ))}
             </datalist>
+            {(contact.locations ?? []).map((loc, idx) => (
+              <div key={idx} className="flex items-center gap-2 group">
+                <input
+                  type="text"
+                  list={`loc-opts-${contact.id}`}
+                  value={loc}
+                  onChange={(e) => updateLocation(idx, e.target.value)}
+                  placeholder="Город или регион"
+                  className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-ink-300 border-b border-transparent focus:border-ink-300 pb-0.5 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeLocation(idx)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <AddButton onClick={addLocation} label="Добавить локацию" />
           </div>
         </div>
 

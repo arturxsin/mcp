@@ -123,6 +123,25 @@ class CrmDB extends Dexie {
           c.tgUsername = '';
         });
       });
+    this.version(7)
+      .stores({
+        boards: 'id, order',
+        statuses: 'id, boardId, order',
+        fields: 'id, boardId, order',
+        contacts: 'id, boardId, createdAt, updatedAt',
+        meta: 'key',
+        sold: 'id, boardId, contactId, order, createdAt',
+        soldFields: 'id, boardId, order',
+        soldTemplates: 'id, boardId, order',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('contacts').toCollection().modify((c: any) => {
+          if (!Array.isArray(c.locations)) {
+            c.locations = c.location ? [c.location] : [];
+          }
+          delete c.location;
+        });
+      });
   }
 }
 
@@ -238,7 +257,7 @@ export async function createContact(boardId: string, name = '', statusId?: strin
     lastTouchComment: '',
     touchHistory: [],
     tgUsername: '',
-    location: '',
+    locations: [],
     budget: 0,
     createdAt: now,
     updatedAt: now,

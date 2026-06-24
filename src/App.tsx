@@ -95,8 +95,9 @@ export default function App() {
   const allLocations = useMemo(() => {
     const set = new Set<string>();
     for (const c of contacts) {
-      const loc = (c.location ?? '').trim();
-      if (loc) set.add(loc);
+      for (const loc of (c.locations ?? [])) {
+        if (loc.trim()) set.add(loc.trim());
+      }
     }
     return [...set].sort();
   }, [contacts]);

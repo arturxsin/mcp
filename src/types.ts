@@ -54,7 +54,7 @@ export interface Contact {
   lastTouchedAt?: number;     // ms timestamp; 0 = never
   lastTouchComment?: string;
   tgUsername?: string;
-  location?: string;
+  locations?: string[];
   budget?: number;
   touchHistory?: TouchHistoryEntry[];
   photo?: string;

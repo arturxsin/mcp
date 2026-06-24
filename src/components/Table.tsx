@@ -232,7 +232,7 @@ export function Table({
       for (const c of sorted) for (const p of (c.phones ?? [])) if (p.value) samples.push(formatPhone(p.value));
     } else if (key === 'location') {
       samples.push('Локация');
-      for (const c of sorted) if (c.location) samples.push(c.location);
+      for (const c of sorted) for (const l of (c.locations ?? [])) if (l) samples.push(l);
     } else if (key === 'budget') {
       samples.push('Бюджет');
       for (const c of sorted) if (c.budget) samples.push(formatBudget(c.budget));
@@ -770,14 +770,11 @@ function Row({
       </td>
       <td
         style={{ width: widthLocation, maxWidth: widthLocation }}
-        className="border-b-2 border-ink-200 px-2 py-2"
+        className="border-b-2 border-ink-200 px-3 py-2"
       >
-        <InlineCell
-          value={contact.location ?? ''}
-          type="text"
-          onCommit={(v) => updateContact(contact.id, { location: v })}
-          placeholder="Локация"
-        />
+        {(contact.locations ?? []).filter(Boolean).map((loc, i) => (
+          <div key={i} className="text-sm text-ink-700 truncate">{loc}</div>
+        ))}
       </td>
       <td
         style={{ width: widthBudget, maxWidth: widthBudget }}

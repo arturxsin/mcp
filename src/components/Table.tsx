@@ -284,7 +284,7 @@ export function Table({
             <tr>
               <th
                 style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
-                className="sticky z-[5] bg-ink-50 border-b border-ink-200 px-2"
+                className="sticky z-[5] bg-ink-50 border-b-2 border-ink-300 px-2"
               >
                 <input
                   type="checkbox"
@@ -315,7 +315,7 @@ export function Table({
               />
               <th
                 style={{ width: widths.phones, minWidth: widths.phones }}
-                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300"
               >
                 <div className="px-3 py-2.5">Телефоны</div>
                 <ColumnResizer
@@ -326,7 +326,7 @@ export function Table({
               </th>
               <th
                 style={{ width: widths.location, minWidth: widths.location }}
-                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300"
               >
                 <div className="px-3 py-2.5">Локация</div>
                 <ColumnResizer
@@ -337,7 +337,7 @@ export function Table({
               </th>
               <th
                 style={{ width: widths.budget, minWidth: widths.budget }}
-                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300"
               >
                 <button
                   type="button"
@@ -355,7 +355,7 @@ export function Table({
               </th>
               <th
                 style={{ width: widths.touch, minWidth: widths.touch }}
-                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200"
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300"
               >
                 <button
                   type="button"
@@ -388,7 +388,7 @@ export function Table({
                   />
                 ))}
               </SortableContext>
-              <th className="bg-ink-50 border-b border-ink-200" />
+              <th className="bg-ink-50 border-b-2 border-ink-300" />
             </tr>
           </thead>
           <tbody>
@@ -403,9 +403,10 @@ export function Table({
                 </td>
               </tr>
             ) : (
-              sorted.map((c) => (
+              sorted.map((c, i) => (
                 <Row
                   key={c.id}
+                  rowIndex={i}
                   contact={c}
                   fields={fields}
                   statuses={statuses}
@@ -429,7 +430,7 @@ export function Table({
               ))
             )}
             <tr>
-              <td colSpan={fields.length + 8} className="border-b border-ink-200">
+              <td colSpan={fields.length + 8} className="border-b-2 border-ink-200">
                 <button
                   type="button"
                   onClick={addRow}
@@ -488,7 +489,7 @@ function StatusHeader({
   return (
     <th
       style={{ width, minWidth: width, left }}
-      className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200 sticky z-[5] group"
+      className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300 sticky z-[5] group"
     >
       <div className="flex items-center gap-1 pr-3 hover:bg-ink-100 transition-colors">
         <button
@@ -522,7 +523,7 @@ function NameHeader({
   return (
     <th
       style={{ width, minWidth: width, left }}
-      className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200 sticky z-[5]"
+      className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300 sticky z-[5]"
     >
       <button
         type="button"
@@ -551,7 +552,7 @@ function SortableHeader({
     <th
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1, width, minWidth: width }}
-      className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b border-ink-200 group"
+      className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300 group"
     >
       <div className="flex items-center px-3 py-2.5 gap-1 hover:bg-ink-100 transition-colors">
         <button
@@ -582,7 +583,7 @@ const PHOTO_W = 44;
 function Row({
   contact, fields, statuses, widthStatus, widthName, widthPhones, widthLocation, widthBudget, widthTouch,
   widthForField, onOpenContact, onOpenStatusManager, selected, onToggleSelect,
-  anySelected, avatarEnabled, touchThresholds, budgetThresholds, budgetColorEnabled,
+  anySelected, avatarEnabled, touchThresholds, budgetThresholds, budgetColorEnabled, rowIndex,
 }: {
   contact: Contact; fields: FieldDef[]; statuses: Status[];
   widthStatus: number; widthName: number; widthPhones: number; widthLocation: number; widthBudget: number; widthTouch: number;
@@ -590,13 +591,16 @@ function Row({
   widthForField: (id: string) => number; onOpenContact: (id: string) => void;
   onOpenStatusManager: () => void; selected: boolean; onToggleSelect: () => void;
   anySelected: boolean; avatarEnabled: boolean; touchThresholds: TouchThreshold[];
+  rowIndex: number;
 }) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const phones = (contact.phones ?? []).filter((p) => p.value?.trim());
   const companies = (contact.companies ?? []).filter((c) => c.name.trim() || c.url.trim());
   const nameUrl = contact.nameUrl?.trim() ?? '';
-  const bg = selected ? 'bg-indigo-50' : 'bg-white group-hover:bg-ink-50';
+  const isEven = rowIndex % 2 === 0;
+  const rowBaseBg = isEven ? 'bg-white' : 'bg-gray-50';
+  const bg = selected ? 'bg-indigo-50' : `${rowBaseBg} group-hover:bg-indigo-50/20`;
   const rawIds = contact.statusIds ?? (contact.statusId ? [contact.statusId] : []);
   const currentIds = [...rawIds].sort((a, b) => {
     const oA = statuses.find((s) => s.id === a)?.order ?? 999;
@@ -605,10 +609,10 @@ function Row({
   });
 
   return (
-    <tr className={`group hover:bg-ink-50 transition-colors ${selected ? 'bg-indigo-50' : ''}`}>
+    <tr className={`group transition-colors cursor-pointer ${selected ? 'bg-indigo-50' : rowBaseBg}`}>
       <td
         style={{ width: CHECKBOX_W, minWidth: CHECKBOX_W, left: 0 }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 px-2 ${bg}`}
+        className={`sticky z-[4] transition-colors border-b-2 border-ink-200 px-2 ${bg}`}
       >
         <input
           type="checkbox"
@@ -619,7 +623,7 @@ function Row({
       </td>
       <td
         style={{ width: widthStatus, maxWidth: widthStatus, left: CHECKBOX_W }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 px-3 py-1.5 ${bg}`}
+        className={`sticky z-[4] transition-colors border-b-2 border-ink-200 px-3 py-2 ${bg}`}
       >
         <button
           ref={setStatusAnchor}
@@ -657,7 +661,7 @@ function Row({
       {/* Name cell — sticky td is containing block; photo absolute-fills height */}
       <td
         style={{ width: widthName, maxWidth: widthName, left: CHECKBOX_W + widthStatus, padding: 0 }}
-        className={`sticky z-[4] transition-colors border-b border-ink-200 overflow-hidden ${bg}`}
+        className={`sticky z-[4] transition-colors border-b-2 border-ink-200 overflow-hidden ${bg}`}
       >
         {avatarEnabled && (
           <img
@@ -720,7 +724,7 @@ function Row({
       </td>
       <td
         style={{ width: widthPhones, maxWidth: widthPhones }}
-        className="border-b border-ink-200 px-3 py-1.5"
+        className="border-b-2 border-ink-200 px-3 py-2"
       >
         {phones.map((p, i) => {
           const digits = p.value.replace(/\D/g, '');
@@ -766,7 +770,7 @@ function Row({
       </td>
       <td
         style={{ width: widthLocation, maxWidth: widthLocation }}
-        className="border-b border-ink-200 px-2 py-1"
+        className="border-b-2 border-ink-200 px-2 py-2"
       >
         <InlineCell
           value={contact.location ?? ''}
@@ -777,13 +781,13 @@ function Row({
       </td>
       <td
         style={{ width: widthBudget, maxWidth: widthBudget }}
-        className="border-b border-ink-200 px-3 py-1.5"
+        className="border-b-2 border-ink-200 px-3 py-2"
       >
         <BudgetCell contact={contact} thresholds={budgetThresholds} colorEnabled={budgetColorEnabled} />
       </td>
       <td
         style={{ width: widthTouch, maxWidth: widthTouch }}
-        className="border-b border-ink-200 px-3 py-1.5"
+        className="border-b-2 border-ink-200 px-3 py-2"
       >
         <TouchCell contact={contact} thresholds={touchThresholds} />
       </td>
@@ -793,7 +797,7 @@ function Row({
           <td
             key={f.id}
             style={{ width: w, maxWidth: w }}
-            className="border-b border-ink-200 px-2 py-1"
+            className="border-b-2 border-ink-200 px-2 py-2"
           >
             <InlineCell
               value={contact.values[f.id] ?? ''}
@@ -805,7 +809,7 @@ function Row({
           </td>
         );
       })}
-      <td className="border-b border-ink-200" />
+      <td className="border-b-2 border-ink-200" />
     </tr>
   );
 }

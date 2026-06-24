@@ -361,86 +361,89 @@ export function ContactCard({
           </div>
         </div>
 
-        {/* Телефоны */}
-        <SectionBlock label="Телефоны">
-          {phones.map((p, idx) => {
-            const digits = p.value.replace(/\D/g, '');
-            return (
-              <div key={idx} className="flex items-center gap-2 group">
-                <input
-                  type="tel"
-                  value={p.value}
-                  onChange={(e) => updatePhone(idx, e.target.value)}
-                  placeholder="+7 999 123-45-67"
-                  className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-                />
-                <label className="flex items-center gap-0.5 text-[10px] font-bold text-green-600 cursor-pointer shrink-0 select-none">
+        {/* Телефоны + Telegram — один блок */}
+        <div className="border border-ink-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Телефоны</div>
+            {phones.map((p, idx) => {
+              const digits = p.value.replace(/\D/g, '');
+              return (
+                <div key={idx} className="flex items-center gap-2 group">
                   <input
-                    type="checkbox"
-                    checked={p.wa}
-                    onChange={(e) => updatePhoneFlag(idx, 'wa', e.target.checked)}
-                    className="accent-green-600 w-3 h-3"
+                    type="tel"
+                    value={p.value}
+                    onChange={(e) => updatePhone(idx, e.target.value)}
+                    placeholder="+7 999 123-45-67"
+                    className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
                   />
-                  WA
-                </label>
-                <label className="flex items-center gap-0.5 text-[10px] font-bold text-sky-500 cursor-pointer shrink-0 select-none">
-                  <input
-                    type="checkbox"
-                    checked={p.tg}
-                    onChange={(e) => updatePhoneFlag(idx, 'tg', e.target.checked)}
-                    className="accent-sky-500 w-3 h-3"
-                  />
-                  TG
-                </label>
-                {p.wa && digits.length >= 7 && (
-                  <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] font-bold text-green-600 hover:text-green-700 px-1 py-0.5 rounded hover:bg-green-50 transition-colors shrink-0"
-                    title="WhatsApp"
-                  >↗</a>
-                )}
-                {p.tg && digits.length >= 7 && (
-                  <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
-                    title="Telegram"
-                  >↗</a>
-                )}
-                <button type="button" onClick={() => removePhone(idx)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            );
-          })}
-          <AddButton onClick={addPhone} label="Добавить номер" />
-        </SectionBlock>
+                  <label className="flex items-center gap-0.5 text-[10px] font-bold text-green-600 cursor-pointer shrink-0 select-none">
+                    <input
+                      type="checkbox"
+                      checked={p.wa}
+                      onChange={(e) => updatePhoneFlag(idx, 'wa', e.target.checked)}
+                      className="accent-green-600 w-3 h-3"
+                    />
+                    WA
+                  </label>
+                  <label className="flex items-center gap-0.5 text-[10px] font-bold text-sky-500 cursor-pointer shrink-0 select-none">
+                    <input
+                      type="checkbox"
+                      checked={p.tg}
+                      onChange={(e) => updatePhoneFlag(idx, 'tg', e.target.checked)}
+                      className="accent-sky-500 w-3 h-3"
+                    />
+                    TG
+                  </label>
+                  {p.wa && digits.length >= 7 && (
+                    <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] font-bold text-green-600 hover:text-green-700 px-1 py-0.5 rounded hover:bg-green-50 transition-colors shrink-0"
+                      title="WhatsApp"
+                    >↗</a>
+                  )}
+                  {p.tg && digits.length >= 7 && (
+                    <a href={`https://t.me/+${digits}`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
+                      title="Telegram"
+                    >↗</a>
+                  )}
+                  <button type="button" onClick={() => removePhone(idx)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-ink-400 hover:text-red-500 transition-all rounded"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              );
+            })}
+            <AddButton onClick={addPhone} label="Добавить номер" />
+          </div>
 
-        {/* Telegram username */}
-        <SectionBlock label="Telegram">
-          {(() => {
-            const tgVal = contact.tgUsername ?? '';
-            const tgClean = tgVal.replace(/^@/, '');
-            return (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={tgVal}
-                  onChange={(e) => updateContact(contact.id, { tgUsername: e.target.value })}
-                  placeholder="@username"
-                  className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-                />
-                {tgClean && (
-                  <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1.5 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
-                  >TG ↗</a>
-                )}
-              </div>
-            );
-          })()}
-        </SectionBlock>
+          <div className="px-4 py-3 border-t border-ink-100 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Telegram</div>
+            {(() => {
+              const tgVal = contact.tgUsername ?? '';
+              const tgClean = tgVal.replace(/^@/, '');
+              return (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={tgVal}
+                    onChange={(e) => updateContact(contact.id, { tgUsername: e.target.value })}
+                    placeholder="@username"
+                    className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+                  />
+                  {tgClean && (
+                    <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1.5 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
+                    >TG ↗</a>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
 
         {/* Custom fields */}
         {(fields.length > 0 || adding) && (

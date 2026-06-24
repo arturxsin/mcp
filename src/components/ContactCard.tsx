@@ -117,6 +117,13 @@ export function ContactCard({
     await updateContact(contact.id, { phones: next });
   }
 
+  async function updatePhoneTgUsername(idx: number, value: string) {
+    if (!contact) return;
+    const next = [...(contact.phones ?? [])];
+    next[idx] = { ...next[idx], tgUsername: value };
+    await updateContact(contact.id, { phones: next });
+  }
+
   async function removePhone(idx: number) {
     if (!contact) return;
     await updateContact(contact.id, {
@@ -419,29 +426,36 @@ export function ContactCard({
             <AddButton onClick={addPhone} label="Добавить номер" />
           </div>
 
-          <div className="px-4 py-3 border-t border-ink-100 space-y-2">
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Telegram</div>
-            {(() => {
-              const tgVal = contact.tgUsername ?? '';
-              const tgClean = tgVal.replace(/^@/, '');
-              return (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={tgVal}
-                    onChange={(e) => updateContact(contact.id, { tgUsername: e.target.value })}
-                    placeholder="@username"
-                    className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
-                  />
-                  {tgClean && (
-                    <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1.5 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
-                    >TG ↗</a>
-                  )}
-                </div>
-              );
-            })()}
+          <div className="px-4 py-3 border-t border-ink-100 space-y-3">
+            {phones.length === 0 ? (
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">Telegram</div>
+            ) : (
+              phones.map((p, idx) => {
+                const tgVal = p.tgUsername ?? '';
+                const tgClean = tgVal.replace(/^@/, '');
+                const label = phones.length > 1 ? `Telegram ${idx + 1}` : 'Telegram';
+                return (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400">{label}</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={tgVal}
+                        onChange={(e) => updatePhoneTgUsername(idx, e.target.value)}
+                        placeholder="@username"
+                        className="flex-1 px-3 py-1.5 text-sm bg-white border border-ink-200 rounded-md focus:outline-none focus:border-indigo-400 placeholder:text-ink-300"
+                      />
+                      {tgClean && (
+                        <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[10px] font-bold text-sky-500 hover:text-sky-600 px-1.5 py-0.5 rounded hover:bg-sky-50 transition-colors shrink-0"
+                        >TG ↗</a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

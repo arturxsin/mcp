@@ -748,13 +748,13 @@ function Row({
             </div>
           );
         })}
-        {(() => {
-          const tgVal = contact.tgUsername ?? '';
+        {phones.map((p, i) => {
+          const tgVal = p.tgUsername ?? '';
           const tgClean = tgVal.replace(/^@/, '');
           if (!tgClean) return null;
           const display = tgVal.startsWith('@') ? tgVal : `@${tgVal}`;
           return (
-            <div className="flex items-center gap-1 min-w-0 mt-0.5">
+            <div key={`tg-${i}`} className="flex items-center gap-1 min-w-0 mt-0.5">
               <span className="text-xs text-sky-500 truncate flex-1">{display}</span>
               <a href={`https://t.me/${tgClean}`} target="_blank" rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
@@ -762,7 +762,7 @@ function Row({
               >TG ↗</a>
             </div>
           );
-        })()}
+        })}
       </td>
       <td
         style={{ width: widthLocation, maxWidth: widthLocation }}

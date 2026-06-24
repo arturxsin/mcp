@@ -37,6 +37,7 @@ export interface PhoneEntry {
   value: string;
   wa: boolean;
   tg: boolean;
+  tgUsername?: string;
 }
 
 export interface Contact {

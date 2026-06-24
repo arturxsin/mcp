@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, ArrowUpDown, Clock, GripVertical, History, MessageSquare, Settings2, Trash2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ArrowDown, ArrowUp, Plus, ArrowUpDown, Clock, GripVertical, History, MessageSquare, Settings2, Trash2, X } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { StatusPicker } from './StatusPicker';
 import { InlineCell } from './InlineCell';
@@ -62,6 +63,7 @@ interface Props {
   touchThresholds: TouchThreshold[];
   budgetThresholds: BudgetThreshold[];
   budgetColorEnabled: boolean;
+  allTags: string[];
 }
 
 export function Table({
@@ -80,6 +82,7 @@ export function Table({
   touchThresholds,
   budgetThresholds,
   budgetColorEnabled,
+  allTags,
 }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [tempWidths, setTempWidths] = useState<Record<string, number>>({});
@@ -385,7 +388,7 @@ export function Table({
                 style={{ width: widths.tags, minWidth: widths.tags }}
                 className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300"
               >
-                <div className="px-3 py-2.5">Хэштеги</div>
+                <div className="px-3 py-2.5">#хештег</div>
                 <ColumnResizer
                   onDrag={(w) => handleDrag('tags', w)}
                   onCommit={(w) => handleCommit('tags', w)}
@@ -435,6 +438,7 @@ export function Table({
                   widthBudget={widths.budget}
                   widthTouch={widths.touch}
                   widthTags={widths.tags}
+                  allTags={allTags}
                   budgetThresholds={budgetThresholds}
                   budgetColorEnabled={budgetColorEnabled}
                   widthForField={widths.forField}
@@ -602,7 +606,7 @@ const PHOTO_W = 44;
 function Row({
   contact, fields, statuses, widthStatus, widthName, widthPhones, widthLocation, widthBudget, widthTouch, widthTags,
   widthForField, onOpenContact, onOpenStatusManager, selected, onToggleSelect,
-  anySelected, avatarEnabled, touchThresholds, budgetThresholds, budgetColorEnabled, rowIndex,
+  anySelected, avatarEnabled, touchThresholds, budgetThresholds, budgetColorEnabled, rowIndex, allTags,
 }: {
   contact: Contact; fields: FieldDef[]; statuses: Status[];
   widthStatus: number; widthName: number; widthPhones: number; widthLocation: number; widthBudget: number; widthTouch: number; widthTags: number;
@@ -610,7 +614,7 @@ function Row({
   widthForField: (id: string) => number; onOpenContact: (id: string) => void;
   onOpenStatusManager: () => void; selected: boolean; onToggleSelect: () => void;
   anySelected: boolean; avatarEnabled: boolean; touchThresholds: TouchThreshold[];
-  rowIndex: number;
+  rowIndex: number; allTags: string[];
 }) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -797,39 +801,10 @@ function Row({
         <TouchCell contact={contact} thresholds={touchThresholds} />
       </td>
       <td
-        style={{ width: widthTags, maxWidth: widthTags, position: 'relative' }}
+        style={{ width: widthTags, maxWidth: widthTags }}
         className="border-b-2 border-ink-200 px-3 py-2"
       >
-        {(() => {
-          const tags = contact.tags ?? [];
-          if (tags.length === 0) return null;
-          const visible = tags.slice(0, 3);
-          const overflow = tags.length - visible.length;
-          return (
-            <div className="group/tt relative">
-              <div className="flex flex-wrap gap-0.5">
-                {visible.map((t, i) => (
-                  <span key={i} className="inline-block bg-violet-50 text-violet-700 rounded-full px-2 py-0 text-[10px] font-medium whitespace-nowrap leading-5">
-                    #{t}
-                  </span>
-                ))}
-                {overflow > 0 && (
-                  <span className="text-[10px] text-ink-400 font-medium self-center">+{overflow}</span>
-                )}
-              </div>
-              <div className="pointer-events-none absolute bottom-full left-0 mb-2 z-50 invisible group-hover/tt:visible opacity-0 group-hover/tt:opacity-100 transition-all duration-150 bg-ink-900 rounded-xl p-3 shadow-2xl min-w-[150px] max-w-[280px]">
-                <div className="flex flex-wrap gap-1">
-                  {tags.map((t, i) => (
-                    <span key={i} className="inline-block bg-violet-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap">
-                      #{t}
-                    </span>
-                  ))}
-                </div>
-                <div className="absolute top-full left-4 border-4 border-transparent border-t-ink-900" />
-              </div>
-            </div>
-          );
-        })()}
+        <TagsCell contact={contact} allTags={allTags} />
       </td>
       {fields.map((f) => {
         const w = widthForField(f.id);
@@ -851,6 +826,139 @@ function Row({
       })}
       <td className="border-b-2 border-ink-200" />
     </tr>
+  );
+}
+
+function TagsCell({ contact, allTags }: { contact: Contact; allTags: string[] }) {
+  const [editing, setEditing] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const tags = contact.tags ?? [];
+  const visible = tags.slice(0, 3);
+  const overflow = tags.length - visible.length;
+
+  function handleMouseEnter() {
+    if (!editing && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setTooltipPos({ x: rect.left, y: rect.top });
+      setTooltipOpen(true);
+    }
+  }
+
+  async function addTag(raw: string) {
+    const tag = raw.trim().replace(/^#+/, '');
+    if (!tag) return;
+    if (tags.some((t) => t.toLowerCase() === tag.toLowerCase())) { setTagInput(''); return; }
+    await updateContact(contact.id, { tags: [...tags, tag] });
+    setTagInput('');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  async function removeTag(idx: number) {
+    await updateContact(contact.id, { tags: tags.filter((_, i) => i !== idx) });
+  }
+
+  if (editing) {
+    return (
+      <div
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setEditing(false);
+            setTagInput('');
+          }
+        }}
+        className="min-h-[20px]"
+      >
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-0.5 mb-1">
+            {tags.map((t, i) => (
+              <span key={i} className="inline-flex items-center gap-0.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-full px-2 py-0 text-[10px] font-medium leading-5">
+                #{t}
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => removeTag(i)}
+                  className="text-violet-400 hover:text-violet-700 transition-colors ml-0.5"
+                >
+                  <X size={8} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <datalist id={`tt-opts-${contact.id}`}>
+          {allTags.filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase())).map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
+        <div className="flex items-center gap-0.5">
+          <span className="text-ink-400 text-[10px] font-medium">#</span>
+          <input
+            ref={inputRef}
+            autoFocus
+            list={`tt-opts-${contact.id}`}
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput); }
+              if (e.key === ',') { e.preventDefault(); addTag(tagInput); }
+              if (e.key === 'Escape') { e.preventDefault(); setEditing(false); setTagInput(''); }
+            }}
+            placeholder="+ тег"
+            className="flex-1 min-w-[60px] text-[11px] bg-transparent focus:outline-none placeholder:text-ink-300"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        ref={ref}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setTooltipOpen(false)}
+        onClick={() => { setTooltipOpen(false); setEditing(true); }}
+        className="cursor-pointer min-h-[20px]"
+      >
+        {tags.length === 0 ? (
+          <span className="text-ink-300 text-[11px]">+ тег</span>
+        ) : (
+          <div className="flex flex-wrap gap-0.5">
+            {visible.map((t, i) => (
+              <span key={i} className="inline-block bg-violet-50 text-violet-700 rounded-full px-2 py-0 text-[10px] font-medium whitespace-nowrap leading-5">#{t}</span>
+            ))}
+            {overflow > 0 && (
+              <span className="text-[10px] text-ink-400 font-medium self-center">+{overflow}</span>
+            )}
+          </div>
+        )}
+      </div>
+      {tooltipOpen && tags.length > 0 && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: tooltipPos.y,
+            left: tooltipPos.x,
+            transform: 'translateY(calc(-100% - 10px))',
+            zIndex: 9999,
+          }}
+          className="pointer-events-none bg-ink-900 rounded-xl p-3 shadow-2xl min-w-[150px] max-w-[280px]"
+        >
+          <div className="flex flex-wrap gap-1">
+            {tags.map((t, i) => (
+              <span key={i} className="inline-block bg-violet-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap">#{t}</span>
+            ))}
+          </div>
+          <div className="absolute top-full left-4 border-4 border-transparent border-t-ink-900" />
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 

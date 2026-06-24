@@ -421,7 +421,7 @@ export function ContactCard({
 
           {/* Хэштеги */}
           <div className="px-4 py-3 border-t border-ink-100">
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-2">Хэштеги</div>
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-2">#хештег</div>
             {(contact.tags ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2.5">
                 {(contact.tags ?? []).map((tag, i) => (

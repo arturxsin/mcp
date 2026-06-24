@@ -239,6 +239,7 @@ export default function App() {
               touchThresholds={settings.touchThresholds}
               budgetThresholds={settings.budgetThresholds}
               budgetColorEnabled={settings.budgetColorEnabled}
+              allTags={allTags}
             />
 
             <ColumnPicker

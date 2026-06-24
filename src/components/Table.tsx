@@ -23,7 +23,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { bulkDeleteContacts, createContact, reorderFields, setColumnWidth, updateContact } from '../db';
 import type { Board, Contact, FieldDef, Status } from '../types';
 import type { TouchThreshold, BudgetThreshold } from '../settings';
-import { formatPhone, formatBudget } from '../utils';
+import { formatPhone, formatBudget, calendarDaysSince } from '../utils';
 
 const CHECKBOX_W = 36;
 const TOUCH_COL_W = 120;
@@ -130,7 +130,7 @@ export function Table({
       if (sort.key.type === 'touch') {
         const ts = c.lastTouchedAt ?? 0;
         if (ts === 0) return Number.MAX_SAFE_INTEGER;
-        return Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
+        return calendarDaysSince(ts);
       }
       if (sort.key.type === 'budget') return c.budget ?? 0;
       return (c.values[sort.key.fieldId] ?? '').toLowerCase();
@@ -887,7 +887,7 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
   }, [contact.lastTouchComment, commentOpen]);
 
   const ts = contact.lastTouchedAt ?? 0;
-  const days = ts > 0 ? Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24)) : null;
+  const days = ts > 0 ? calendarDaysSince(ts) : null;
 
   const sortedT = [...thresholds].sort((a, b) => a.days - b.days);
   let badgeColor = sortedT.length > 0 ? sortedT[sortedT.length - 1].color : '#ef4444';

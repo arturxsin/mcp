@@ -108,3 +108,12 @@ export function formatPhone(v: string): string {
   }
   return v;
 }
+
+/** Calendar days elapsed since a timestamp (midnight-to-midnight, not 24h periods). */
+export function calendarDaysSince(ts: number): number {
+  const past = new Date(ts);
+  const pastMidnight = new Date(past.getFullYear(), past.getMonth(), past.getDate()).getTime();
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((todayMidnight - pastMidnight) / 86400000);
+}

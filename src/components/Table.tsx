@@ -882,12 +882,13 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
   const [historyOpen, setHistoryOpen] = useState(false);
   const [draft, setDraft] = useState(contact.lastTouchComment ?? '');
 
-  useEffect(() => {
-    if (!commentOpen) setDraft(contact.lastTouchComment ?? '');
-  }, [contact.lastTouchComment, commentOpen]);
-
   const ts = contact.lastTouchedAt ?? 0;
   const days = ts > 0 ? calendarDaysSince(ts) : null;
+  const isToday = days === 0;
+
+  useEffect(() => {
+    if (!commentOpen) setDraft(isToday ? (contact.lastTouchComment ?? '') : '');
+  }, [contact.lastTouchComment, commentOpen, isToday]);
 
   const sortedT = [...thresholds].sort((a, b) => a.days - b.days);
   let badgeColor = sortedT.length > 0 ? sortedT[sortedT.length - 1].color : '#ef4444';
@@ -911,7 +912,17 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
   }
 
   function saveComment() {
-    updateContact(contact.id, { lastTouchComment: draft });
+    if (!isToday && ts > 0) {
+      // New day: archive previous session, record today's touch, save comment atomically
+      const history = contact.touchHistory ?? [];
+      updateContact(contact.id, {
+        lastTouchedAt: Date.now(),
+        lastTouchComment: draft,
+        touchHistory: [{ touchedAt: ts, comment: contact.lastTouchComment ?? '' }, ...history],
+      });
+    } else {
+      updateContact(contact.id, { lastTouchComment: draft });
+    }
     setCommentOpen(false);
   }
 
@@ -949,7 +960,7 @@ function TouchCell({ contact, thresholds }: { contact: Contact; thresholds: Touc
       >
         <MessageSquare
           size={12}
-          className={contact.lastTouchComment ? 'text-indigo-500' : 'text-ink-300 hover:text-ink-500'}
+          className={isToday && contact.lastTouchComment ? 'text-indigo-500' : 'text-ink-300 hover:text-ink-500'}
         />
       </button>
       <button

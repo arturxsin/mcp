@@ -29,6 +29,7 @@ const CHECKBOX_W = 36;
 const TOUCH_COL_W = 120;
 const LOCATION_COL_W = 140;
 const BUDGET_COL_W = 150;
+const TAGS_COL_W = 180;
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
 
 type SortDir = 'asc' | 'desc';
@@ -41,6 +42,7 @@ const DEFAULT_WIDTHS = {
   touch: TOUCH_COL_W,
   location: LOCATION_COL_W,
   budget: BUDGET_COL_W,
+  tags: TAGS_COL_W,
   field: 180,
 };
 
@@ -94,6 +96,7 @@ export function Table({
       touch: tempWidths.touch ?? persisted.touch ?? DEFAULT_WIDTHS.touch,
       location: tempWidths.location ?? persisted.location ?? DEFAULT_WIDTHS.location,
       budget: tempWidths.budget ?? persisted.budget ?? DEFAULT_WIDTHS.budget,
+      tags: tempWidths.tags ?? persisted.tags ?? DEFAULT_WIDTHS.tags,
       forField: (id: string) => tempWidths[id] ?? persisted[id] ?? DEFAULT_WIDTHS.field,
     };
   }, [board, tempWidths]);
@@ -236,6 +239,9 @@ export function Table({
     } else if (key === 'budget') {
       samples.push('Бюджет');
       for (const c of sorted) if (c.budget) samples.push(formatBudget(c.budget));
+    } else if (key === 'tags') {
+      samples.push('Хэштеги');
+      for (const c of sorted) for (const t of (c.tags ?? [])) if (t) samples.push('#' + t);
     } else {
       const f = fields.find((x) => x.id === key);
       if (f) samples.push(f.name);
@@ -254,7 +260,7 @@ export function Table({
   const cols = fields.map((f) => f.id);
 
   const totalWidth =
-    CHECKBOX_W + widths.status + widths.name + widths.phones + widths.location + widths.budget + widths.touch +
+    CHECKBOX_W + widths.status + widths.name + widths.phones + widths.location + widths.budget + widths.touch + widths.tags +
     fields.reduce((sum, f) => sum + widths.forField(f.id), 0) + 24;
 
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
@@ -275,6 +281,7 @@ export function Table({
             <col style={{ width: widths.location }} />
             <col style={{ width: widths.budget }} />
             <col style={{ width: widths.touch }} />
+            <col style={{ width: widths.tags }} />
             {fields.map((f) => (
               <col key={f.id} style={{ width: widths.forField(f.id) }} />
             ))}
@@ -374,6 +381,17 @@ export function Table({
                   onAutoFit={() => {}}
                 />
               </th>
+              <th
+                style={{ width: widths.tags, minWidth: widths.tags }}
+                className="relative text-left text-[11px] uppercase tracking-wider font-medium text-ink-500 bg-ink-50 border-b-2 border-ink-300"
+              >
+                <div className="px-3 py-2.5">Хэштеги</div>
+                <ColumnResizer
+                  onDrag={(w) => handleDrag('tags', w)}
+                  onCommit={(w) => handleCommit('tags', w)}
+                  onAutoFit={() => autoFit('tags')}
+                />
+              </th>
               <SortableContext items={cols} strategy={horizontalListSortingStrategy}>
                 {fields.map((f) => (
                   <SortableHeader
@@ -394,7 +412,7 @@ export function Table({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={fields.length + 8} className="py-16 text-center">
+                <td colSpan={fields.length + 9} className="py-16 text-center">
                   <div className="text-sm text-ink-400">
                     {contacts.length === 0
                       ? 'Пока нет клиентов. Нажмите «Новый клиент», чтобы создать первого.'
@@ -416,6 +434,7 @@ export function Table({
                   widthLocation={widths.location}
                   widthBudget={widths.budget}
                   widthTouch={widths.touch}
+                  widthTags={widths.tags}
                   budgetThresholds={budgetThresholds}
                   budgetColorEnabled={budgetColorEnabled}
                   widthForField={widths.forField}
@@ -430,7 +449,7 @@ export function Table({
               ))
             )}
             <tr>
-              <td colSpan={fields.length + 8} className="border-b-2 border-ink-200">
+              <td colSpan={fields.length + 9} className="border-b-2 border-ink-200">
                 <button
                   type="button"
                   onClick={addRow}
@@ -581,12 +600,12 @@ function SortableHeader({
 const PHOTO_W = 44;
 
 function Row({
-  contact, fields, statuses, widthStatus, widthName, widthPhones, widthLocation, widthBudget, widthTouch,
+  contact, fields, statuses, widthStatus, widthName, widthPhones, widthLocation, widthBudget, widthTouch, widthTags,
   widthForField, onOpenContact, onOpenStatusManager, selected, onToggleSelect,
   anySelected, avatarEnabled, touchThresholds, budgetThresholds, budgetColorEnabled, rowIndex,
 }: {
   contact: Contact; fields: FieldDef[]; statuses: Status[];
-  widthStatus: number; widthName: number; widthPhones: number; widthLocation: number; widthBudget: number; widthTouch: number;
+  widthStatus: number; widthName: number; widthPhones: number; widthLocation: number; widthBudget: number; widthTouch: number; widthTags: number;
   budgetThresholds: BudgetThreshold[]; budgetColorEnabled: boolean;
   widthForField: (id: string) => number; onOpenContact: (id: string) => void;
   onOpenStatusManager: () => void; selected: boolean; onToggleSelect: () => void;
@@ -776,6 +795,41 @@ function Row({
         className="border-b-2 border-ink-200 px-3 py-2"
       >
         <TouchCell contact={contact} thresholds={touchThresholds} />
+      </td>
+      <td
+        style={{ width: widthTags, maxWidth: widthTags, position: 'relative' }}
+        className="border-b-2 border-ink-200 px-3 py-2"
+      >
+        {(() => {
+          const tags = contact.tags ?? [];
+          if (tags.length === 0) return null;
+          const visible = tags.slice(0, 3);
+          const overflow = tags.length - visible.length;
+          return (
+            <div className="group/tt relative">
+              <div className="flex flex-wrap gap-0.5">
+                {visible.map((t, i) => (
+                  <span key={i} className="inline-block bg-violet-50 text-violet-700 rounded-full px-2 py-0 text-[10px] font-medium whitespace-nowrap leading-5">
+                    #{t}
+                  </span>
+                ))}
+                {overflow > 0 && (
+                  <span className="text-[10px] text-ink-400 font-medium self-center">+{overflow}</span>
+                )}
+              </div>
+              <div className="pointer-events-none absolute bottom-full left-0 mb-2 z-50 invisible group-hover/tt:visible opacity-0 group-hover/tt:opacity-100 transition-all duration-150 bg-ink-900 rounded-xl p-3 shadow-2xl min-w-[150px] max-w-[280px]">
+                <div className="flex flex-wrap gap-1">
+                  {tags.map((t, i) => (
+                    <span key={i} className="inline-block bg-violet-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap">
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+                <div className="absolute top-full left-4 border-4 border-transparent border-t-ink-900" />
+              </div>
+            </div>
+          );
+        })()}
       </td>
       {fields.map((f) => {
         const w = widthForField(f.id);

@@ -142,6 +142,22 @@ class CrmDB extends Dexie {
           delete c.location;
         });
       });
+    this.version(8)
+      .stores({
+        boards: 'id, order',
+        statuses: 'id, boardId, order',
+        fields: 'id, boardId, order',
+        contacts: 'id, boardId, createdAt, updatedAt',
+        meta: 'key',
+        sold: 'id, boardId, contactId, order, createdAt',
+        soldFields: 'id, boardId, order',
+        soldTemplates: 'id, boardId, order',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('contacts').toCollection().modify((c: any) => {
+          if (!Array.isArray(c.tags)) c.tags = [];
+        });
+      });
   }
 }
 
@@ -259,6 +275,7 @@ export async function createContact(boardId: string, name = '', statusId?: strin
     tgUsername: '',
     locations: [],
     budget: 0,
+    tags: [],
     createdAt: now,
     updatedAt: now,
   });

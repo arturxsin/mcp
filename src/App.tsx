@@ -101,6 +101,16 @@ export default function App() {
     }
     return [...set].sort();
   }, [contacts]);
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of contacts) {
+      for (const tag of (c.tags ?? [])) {
+        if (tag.trim()) set.add(tag.trim());
+      }
+    }
+    return [...set].sort();
+  }, [contacts]);
   const openContact = useMemo(
     () => contacts.find((c) => c.id === openContactId) ?? null,
     [contacts, openContactId],
@@ -261,6 +271,7 @@ export default function App() {
         onOpenStatusManager={() => setStatusMgrOpen(true)}
         avatarEnabled={settings.avatarEnabled}
         locations={allLocations}
+        allTags={allTags}
       />
 
       <SettingsModal

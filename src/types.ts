@@ -57,6 +57,7 @@ export interface Contact {
   locations?: string[];
   budget?: number;
   touchHistory?: TouchHistoryEntry[];
+  tags?: string[];
   photo?: string;
   createdAt: number;
   updatedAt: number;

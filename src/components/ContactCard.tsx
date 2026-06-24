@@ -40,6 +40,7 @@ interface Props {
   onOpenStatusManager: () => void;
   avatarEnabled?: boolean;
   locations?: string[];
+  allTags?: string[];
 }
 
 const DEFAULT_AVATAR = '/mcp/default-avatar.svg';
@@ -54,10 +55,12 @@ export function ContactCard({
   onOpenStatusManager,
   avatarEnabled = false,
   locations = [],
+  allTags = [],
 }: Props) {
   const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [tagInput, setTagInput] = useState('');
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<FieldDef['type']>('text');
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -67,6 +70,7 @@ export function ContactCard({
       setAdding(false);
       setNewName('');
       setNewType('text');
+      setTagInput('');
     }
   }, [open]);
 
@@ -171,6 +175,22 @@ export function ContactCard({
     await updateContact(contact.id, {
       locations: (contact.locations ?? []).filter((_, i) => i !== idx),
     });
+  }
+
+  // --- Tags ---
+  async function addTag(raw: string) {
+    if (!contact) return;
+    const tag = raw.trim().replace(/^#+/, '');
+    if (!tag) return;
+    const existing = contact.tags ?? [];
+    if (existing.some((t) => t.toLowerCase() === tag.toLowerCase())) { setTagInput(''); return; }
+    await updateContact(contact.id, { tags: [...existing, tag] });
+    setTagInput('');
+  }
+
+  async function removeTag(idx: number) {
+    if (!contact) return;
+    await updateContact(contact.id, { tags: (contact.tags ?? []).filter((_, i) => i !== idx) });
   }
 
   // --- Fields DnD ---
@@ -397,6 +417,55 @@ export function ContactCard({
               </div>
             ))}
             <AddButton onClick={addLocation} label="Добавить локацию" />
+          </div>
+
+          {/* Хэштеги */}
+          <div className="px-4 py-3 border-t border-ink-100">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-ink-400 mb-2">Хэштеги</div>
+            {(contact.tags ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2.5">
+                {(contact.tags ?? []).map((tag, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-full px-2.5 py-0.5 text-xs font-medium">
+                    <span className="text-violet-400 font-bold text-[10px]">#</span>{tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(i)}
+                      className="text-violet-400 hover:text-violet-700 transition-colors ml-0.5"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <datalist id={`tags-opts-${contact.id}`}>
+              {allTags.filter((t) => !(contact.tags ?? []).some((x) => x.toLowerCase() === t.toLowerCase())).map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+            <div className="flex items-center gap-1.5">
+              <span className="text-ink-400 text-sm font-medium shrink-0">#</span>
+              <input
+                list={`tags-opts-${contact.id}`}
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput); }
+                  if (e.key === ',') { e.preventDefault(); addTag(tagInput); }
+                }}
+                placeholder="Введите тег и нажмите Enter"
+                className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-ink-300 border-b border-transparent focus:border-ink-300 pb-0.5 transition-colors"
+              />
+              {tagInput.trim() && (
+                <button
+                  type="button"
+                  onClick={() => addTag(tagInput)}
+                  className="text-xs text-violet-600 hover:text-violet-800 font-medium shrink-0 transition-colors"
+                >
+                  + Добавить
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
